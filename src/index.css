@@ -1,4 +1,97 @@
 @import "tailwindcss";
-@plugin "daisyui" {
-  themes: light --default, dark --prefersdark;
+@plugin "daisyui";
+
+@plugin "daisyui/theme" {
+  name: "eclipse";
+  default: true;
+  prefersdark: true;
+  color-scheme: "dark";
+  --color-base-100: #020204;
+  --color-base-200: #06060c;
+  --color-base-300: #0e0f1a;
+  --color-base-content: #f1f5f9;
+  --color-primary: #ffd00c;
+  --color-primary-content: #020204;
+  --color-secondary: #00d2ff;
+  --color-secondary-content: #020204;
+  --color-accent: #9234ff;
+  --color-accent-content: #f8fafc;
+  --color-neutral: #0b0c14;
+  --color-neutral-content: #94a3b8;
+  --color-info: #00d2ff;
+  --color-success: #10e476;
+  --color-warning: #ff6210;
+  --color-error: #ff2044;
+}
+
+/*
+ * Typography tokens modeled directly on pinkfloyd.com (css/variables.css & css/fonts.css):
+ *   --font-family--main:      PP Neue Montreal (400/500, normal & italic) -> Switzer fallback
+ *   --font-family--label:     BB Manual Mono Pro TX (400/500, uppercase UI/CTAs) -> IBM Plex Mono fallback
+ *   --font-family--wordmark:  Condensed masthead inspired by the top-left PINK FLOYD wordmark
+ *
+ * Drop local .woff2 files into public/fonts/ anytime to activate native PP Neue Montreal / BB Manual Mono.
+ */
+:root {
+  --font-family--main: 'PP Neue Montreal', 'Neue Montreal', 'Switzer', Arial, sans-serif;
+  --font-family--label: 'BB Manual Mono Pro TX', 'Bbmanualmonoprotx', 'IBM Plex Mono', monospace;
+  --font-family--wordmark: 'Oswald', 'PP Neue Montreal', 'Switzer', sans-serif;
+}
+
+@layer base {
+  html,
+  body {
+    background-color: #020204;
+    color: #f1f5f9;
+    font-family: var(--font-family--main);
+    font-weight: 400;
+    line-height: 1.25;
+    overflow-x: hidden;
+  }
+}
+
+/* pinkfloyd.com primary neo-grotesque (body, nav links, uppercase display headings) */
+.font-pf-main {
+  font-family: var(--font-family--main);
+  letter-spacing: -0.01em;
+}
+
+/* pinkfloyd.com technical mono (buttons, CTAs, h6 micro-labels, metadata) */
+.font-pf-label {
+  font-family: var(--font-family--label);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+/* pinkfloyd.com condensed top-left masthead wordmark */
+.font-pf-wordmark {
+  font-family: var(--font-family--wordmark);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.dark-grain {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.032'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+.obsidian-panel {
+  background: rgba(5, 5, 10, 0.76);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.spectral-hairline {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 5%,
+    #7c3aed 28%,
+    #06b6d4 46%,
+    #10b981 58%,
+    #f59e0b 72%,
+    #ef4444 86%,
+    transparent 96%
+  );
 }

@@ -1,12 +1,27 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="eclipse" class="scroll-smooth bg-[#020204]">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Farrel Arvindra — Portfolio</title>
+
+    <!-- Fontshare: Switzer (optical neo-grotesque twin to pinkfloyd.com's PP Neue Montreal) -->
+    <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
+    <link
+      href="https://api.fontshare.com/v2/css?f[]=switzer@400,401,500,501&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Google Fonts: IBM Plex Mono (for BB Manual Mono Pro TX labels/CTAs) + Oswald (for condensed PF-style wordmark) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Oswald:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
   </head>
-  <body>
+  <body class="bg-[#020204] text-slate-100 antialiased selection:bg-amber-400/20 selection:text-amber-200">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
