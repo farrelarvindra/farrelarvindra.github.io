@@ -9,6 +9,10 @@ export const PORTFOLIO_DATA = {
     headlineItalic: 'refracted in the dark.',
     bio: 'Full-stack & creative frontend developer. A single line of intent enters the dark and bends into spectrum—architecture, interfaces, and experiments.',
   },
+  breatheInterlude: {
+    quote: 'All you touch and all you see is all your life will ever be.',
+    source: 'Breathe (In the Air)',
+  },
   wavelengths: [
     {
       nm: '680nm',

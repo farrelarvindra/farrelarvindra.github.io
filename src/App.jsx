@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import ActPrism from './acts/ActPrism'
+import InterludeBreathe from './acts/InterludeBreathe'
 import SpectrumHUD from './components/SpectrumHUD'
 
 export default function App() {
@@ -22,6 +23,11 @@ export default function App() {
         <ActPrism onBiasChange={handleBiasChange} />
 
         <div className="spectral-hairline opacity-35" />
+
+        {/* INTERLUDE: "Breathe (In the Air)" Quote + Live Solar Eclipse */}
+        <InterludeBreathe />
+
+        <div className="spectral-hairline opacity-25" />
 
         {/* Upcoming Acts staged cleanly for Act-by-Act build */}
         <section
