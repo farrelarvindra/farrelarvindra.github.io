@@ -12,12 +12,43 @@ const INITIAL_MOTES = Array.from({ length: 95 }, (_, i) => ({
   tw: i * 1.1,
 }))
 
-function rotPt(x, y, cx, cy, a) {
-  const dx = x - cx
-  const dy = y - cy
-  const c = Math.cos(a)
-  const s = Math.sin(a)
-  return { x: cx + dx * c - dy * s, y: cy + dx * s + dy * c }
+// Regular 3D tetrahedron local vertices (Apex V0, Back-Left V1, Back-Right V2, Front-Ridge V3)
+const TETRA_VERTS = [
+  [0.0, -1.08, -0.05],
+  [-0.95, 0.5, -0.48],
+  [0.95, 0.5, -0.48],
+  [0.06, 0.64, 0.82],
+]
+
+function projectTetraVertex([x, y, z], px, py, sz, pitch, yaw, roll) {
+  const cx = Math.cos(pitch)
+  const sx = Math.sin(pitch)
+  const y1 = y * cx - z * sx
+  const z1 = y * sx + z * cx
+
+  const cy = Math.cos(yaw)
+  const sy = Math.sin(yaw)
+  const x2 = x * cy + z1 * sy
+  const z2 = -x * sy + z1 * cy
+
+  const cz = Math.cos(roll)
+  const szR = Math.sin(roll)
+  const x3 = x2 * cz - y1 * szR
+  const y3 = x2 * szR + y1 * cz
+
+  const persp = 4.2 / (4.2 - z2)
+  return {
+    x: px + x3 * sz * persp,
+    y: py + y3 * sz * persp,
+    z: z2,
+  }
+}
+
+function barycentric3(a, b, c, wa, wb, wc) {
+  return {
+    x: a.x * wa + b.x * wb + c.x * wc,
+    y: a.y * wa + b.y * wb + c.y * wc,
+  }
 }
 
 export default function ActPrism({ onBiasChange }) {
@@ -61,38 +92,28 @@ export default function ActPrism({ onBiasChange }) {
         pCtx.fillStyle = '#020204'
         pCtx.fillRect(0, 0, w, h)
 
-        // Small, understated prism anchor (upper-left third so light dominates 80% of the dark room)
+        // Small, understated 3D tetrahedron anchor (upper-left third so light dominates 80% of the dark room)
         const px = w * 0.33
         const py = h * 0.39
-        const sz = Math.min(w, h) * 0.072
+        const sz = Math.min(w, h) * 0.08
 
-        // Artistic asymmetric tilt angle pivoting subtly with light bias
-        const tilt = -0.34 + bias * 0.16
+        // Subtle 3D orientation: diagonal cant + gentle 3D yaw breathing + bias pivot
+        const pitch = 0.16 - bias * 0.08
+        const yaw = -0.08 + Math.sin(t * 0.00065) * 0.14 + bias * 0.12
+        const roll = -0.26 + bias * 0.15
 
-        // 3D foreshortened tilted crystal vertices
-        const depthX = sz * 0.36
-        const depthY = sz * 0.72
+        const [p0, p1, p2, p3] = TETRA_VERTS.map((v) =>
+          projectTetraVertex(v, px, py, sz, pitch, yaw, roll),
+        )
 
-        const tA = rotPt(px - sz * 0.92, py + sz * 0.42, px, py, tilt)
-        const tB = rotPt(px + sz * 0.88, py + sz * 0.46, px, py, tilt)
-        const tC = rotPt(px + sz * 0.04, py - sz * 0.96, px, py, tilt)
+        // Exact optical attachment points on Left Entry Face (p0,p1,p3), Right Exit Face (p0,p2,p3), and Base (p1,p2,p3)
+        const wApexIn = Math.max(0.22, Math.min(0.56, 0.4 - bias * 0.09))
+        const entryPt = barycentric3(p0, p1, p3, wApexIn, 0.34, 1 - wApexIn - 0.34)
 
-        const bA = { x: tA.x + depthX, y: tA.y + depthY }
-        const bB = { x: tB.x + depthX, y: tB.y + depthY }
-        const bC = { x: tC.x + depthX, y: tC.y + depthY }
+        const wApexOut = Math.max(0.22, Math.min(0.54, 0.36 - bias * 0.06))
+        const exitPt = barycentric3(p0, p2, p3, wApexOut, 0.36, 1 - wApexOut - 0.36)
 
-        const entryPt = {
-          x: (tA.x + tC.x) * 0.5 + depthX * 0.45,
-          y: (tA.y + tC.y) * 0.5 + depthY * 0.45 + bias * (sz * 0.14),
-        }
-        const exitPt = {
-          x: (tB.x + tC.x) * 0.5 + depthX * 0.45,
-          y: (tB.y + tC.y) * 0.5 + depthY * 0.45 + bias * (sz * 0.08),
-        }
-        const baseReflPt = {
-          x: (bA.x + bB.x) * 0.5,
-          y: (bA.y + bB.y) * 0.5,
-        }
+        const baseReflPt = barycentric3(p1, p2, p3, 0.33, 0.33, 0.34)
 
         const diag = Math.hypot(w, h)
 
@@ -170,20 +191,31 @@ export default function ActPrism({ onBiasChange }) {
         pCtx.stroke()
         pCtx.restore()
 
-        // 4. INTERNAL CRYSTAL REFRACTION & RAINBOW BEVEL GLINTS
+        // 4. 3D TETRAHEDRON BACK FACETS, INTERNAL DISPERSION & FRONT CRYSTAL FACETS
         pCtx.save()
-        pCtx.fillStyle = 'rgba(160, 195, 255, 0.028)'
-        pCtx.strokeStyle = 'rgba(255, 255, 255, 0.14)'
-        pCtx.lineWidth = 0.85
+        // Rear face (p0, p1, p2) & Underside base face (p1, p2, p3) drawn behind internal rainbow
+        pCtx.fillStyle = 'rgba(160, 195, 255, 0.024)'
+        pCtx.strokeStyle = 'rgba(255, 255, 255, 0.13)'
+        pCtx.lineWidth = 0.8
         pCtx.beginPath()
-        pCtx.moveTo(bA.x, bA.y)
-        pCtx.lineTo(bB.x, bB.y)
-        pCtx.lineTo(bC.x, bC.y)
+        pCtx.moveTo(p0.x, p0.y)
+        pCtx.lineTo(p1.x, p1.y)
+        pCtx.lineTo(p2.x, p2.y)
+        pCtx.closePath()
+        pCtx.fill()
+        pCtx.stroke()
+
+        pCtx.fillStyle = 'rgba(140, 180, 255, 0.02)'
+        pCtx.beginPath()
+        pCtx.moveTo(p1.x, p1.y)
+        pCtx.lineTo(p2.x, p2.y)
+        pCtx.lineTo(p3.x, p3.y)
         pCtx.closePath()
         pCtx.fill()
         pCtx.stroke()
         pCtx.restore()
 
+        // Internal rainbow dispersion fanning through the interior of the glass tetrahedron
         const internalAngle = Math.atan2(exitPt.y - entryPt.y, exitPt.x - entryPt.x)
         const internalDist = Math.hypot(exitPt.x - entryPt.x, exitPt.y - entryPt.y)
         drawRainbowFan(
@@ -199,63 +231,60 @@ export default function ActPrism({ onBiasChange }) {
           false,
         )
 
+        // Internal rainbow bevel glints along rear & base tetrahedron edges
         pCtx.save()
         pCtx.globalCompositeOperation = 'lighter'
-        const edgeRainbow = pCtx.createLinearGradient(tA.x, tA.y, bB.x, bB.y)
-        edgeRainbow.addColorStop(0.0, 'rgba(146, 52, 255, 0.42)')
-        edgeRainbow.addColorStop(0.35, 'rgba(0, 210, 255, 0.48)')
-        edgeRainbow.addColorStop(0.68, 'rgba(255, 208, 12, 0.48)')
-        edgeRainbow.addColorStop(1.0, 'rgba(255, 32, 68, 0.42)')
+        const edgeRainbow = pCtx.createLinearGradient(p1.x, p1.y, p2.x, p2.y)
+        edgeRainbow.addColorStop(0.0, 'rgba(146, 52, 255, 0.45)')
+        edgeRainbow.addColorStop(0.35, 'rgba(0, 210, 255, 0.5)')
+        edgeRainbow.addColorStop(0.68, 'rgba(255, 208, 12, 0.5)')
+        edgeRainbow.addColorStop(1.0, 'rgba(255, 32, 68, 0.45)')
 
         pCtx.strokeStyle = edgeRainbow
-        pCtx.lineWidth = 1.8
+        pCtx.lineWidth = 1.65
         pCtx.beginPath()
-        pCtx.moveTo(tA.x, tA.y)
-        pCtx.lineTo(bA.x, bA.y)
-        pCtx.moveTo(tB.x, tB.y)
-        pCtx.lineTo(bB.x, bB.y)
+        pCtx.moveTo(p1.x, p1.y)
+        pCtx.lineTo(p2.x, p2.y)
+        pCtx.moveTo(p1.x, p1.y)
+        pCtx.lineTo(p3.x, p3.y)
         pCtx.stroke()
         pCtx.restore()
 
-        // Delicate smoked-glass crystal silhouette
+        // Front two smoked-glass triangular facets + sharp central crystal ridge (p0 -> p3)
         pCtx.save()
-        pCtx.fillStyle = 'rgba(255, 255, 255, 0.035)'
-        pCtx.strokeStyle = 'rgba(255, 255, 255, 0.26)'
+        // Front-Left Entry Facet (p0, p1, p3)
+        pCtx.fillStyle = 'rgba(255, 255, 255, 0.032)'
+        pCtx.strokeStyle = 'rgba(255, 255, 255, 0.28)'
         pCtx.lineWidth = 0.95
         pCtx.beginPath()
-        pCtx.moveTo(tC.x, tC.y)
-        pCtx.lineTo(tA.x, tA.y)
-        pCtx.lineTo(bA.x, bA.y)
-        pCtx.lineTo(bC.x, bC.y)
+        pCtx.moveTo(p0.x, p0.y)
+        pCtx.lineTo(p1.x, p1.y)
+        pCtx.lineTo(p3.x, p3.y)
         pCtx.closePath()
         pCtx.fill()
         pCtx.stroke()
 
-        pCtx.fillStyle = 'rgba(255, 255, 255, 0.045)'
+        // Front-Right Exit Facet (p0, p3, p2)
+        pCtx.fillStyle = 'rgba(220, 238, 255, 0.046)'
+        pCtx.strokeStyle = 'rgba(255, 255, 255, 0.36)'
         pCtx.beginPath()
-        pCtx.moveTo(tC.x, tC.y)
-        pCtx.lineTo(tB.x, tB.y)
-        pCtx.lineTo(bB.x, bB.y)
-        pCtx.lineTo(bC.x, bC.y)
+        pCtx.moveTo(p0.x, p0.y)
+        pCtx.lineTo(p3.x, p3.y)
+        pCtx.lineTo(p2.x, p2.y)
         pCtx.closePath()
         pCtx.fill()
         pCtx.stroke()
 
-        pCtx.fillStyle = 'rgba(220, 238, 255, 0.05)'
+        // Crisp specular highlight along the front apex-to-base ridge (p0 -> p3)
+        const ridgeGrad = pCtx.createLinearGradient(p0.x, p0.y, p3.x, p3.y)
+        ridgeGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.88)')
+        ridgeGrad.addColorStop(0.55, 'rgba(225, 240, 255, 0.52)')
+        ridgeGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.78)')
+        pCtx.strokeStyle = ridgeGrad
+        pCtx.lineWidth = 1.35
         pCtx.beginPath()
-        pCtx.moveTo(tA.x, tA.y)
-        pCtx.lineTo(tB.x, tB.y)
-        pCtx.lineTo(tC.x, tC.y)
-        pCtx.closePath()
-        pCtx.fill()
-        pCtx.strokeStyle = 'rgba(255, 255, 255, 0.38)'
-        pCtx.stroke()
-
-        pCtx.strokeStyle = 'rgba(255, 255, 255, 0.72)'
-        pCtx.lineWidth = 1.3
-        pCtx.beginPath()
-        pCtx.moveTo(tC.x, tC.y)
-        pCtx.lineTo(bC.x, bC.y)
+        pCtx.moveTo(p0.x, p0.y)
+        pCtx.lineTo(p3.x, p3.y)
         pCtx.stroke()
         pCtx.restore()
 
