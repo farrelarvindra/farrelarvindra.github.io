@@ -52,11 +52,25 @@ function barycentric3(a, b, c, wa, wb, wc) {
 }
 
 export default function ActPrism({ onBiasChange }) {
+  const sectionRef = useRef(null)
   const canvasRef = useRef(null)
   const targetBiasRef = useRef(0.28)
   const smoothBiasRef = useRef(0.28)
   const lastReportedDegRef = useRef(28)
   const [activeDiscipline, setActiveDiscipline] = useState(null)
+  const [exitRatio, setExitRatio] = useState(0)
+
+  // Subtle scroll choreography: gently lift & fade hero copy as you descend into the Eclipse
+  useEffect(() => {
+    const onScroll = () => {
+      const vh = window.innerHeight || 1
+      const ratio = Math.max(0, Math.min(1, window.scrollY / (vh * 0.72)))
+      setExitRatio(ratio)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -87,10 +101,9 @@ export default function ActPrism({ onBiasChange }) {
           if (onBiasChange) onBiasChange(roundedDeg)
         }
 
-        // 1. PURE DEEP DARKNESS (#020204)
+        // Transparent clear so the shared persistent CosmicBackdrop starfield shines seamlessly behind!
         pCtx.globalCompositeOperation = 'source-over'
-        pCtx.fillStyle = '#020204'
-        pCtx.fillRect(0, 0, w, h)
+        pCtx.clearRect(0, 0, w, h)
 
         // Small, understated 3D tetrahedron anchor (upper-left third so light dominates 80% of the dark room)
         const px = w * 0.33
@@ -106,7 +119,6 @@ export default function ActPrism({ onBiasChange }) {
           projectTetraVertex(v, px, py, sz, pitch, yaw, roll),
         )
 
-        // Exact optical attachment points on Left Entry Face (p0,p1,p3), Right Exit Face (p0,p2,p3), and Base (p1,p2,p3)
         const wApexIn = Math.max(0.22, Math.min(0.56, 0.4 - bias * 0.09))
         const entryPt = barycentric3(p0, p1, p3, wApexIn, 0.34, 1 - wApexIn - 0.34)
 
@@ -118,7 +130,6 @@ export default function ActPrism({ onBiasChange }) {
         const diag = Math.hypot(w, h)
 
         // 2. SECONDARY RAINBOW REFLECTIONS
-        // Reflection A: Upper-right grazing rainbow reflection
         const reflAngleUp = -0.46 + bias * 0.24
         const reflSpreadUp = 0.16 + Math.abs(bias) * 0.06
         drawRainbowFan(
@@ -134,7 +145,6 @@ export default function ActPrism({ onBiasChange }) {
           true,
         )
 
-        // Reflection B: Downward-left grazing surface rainbow reflection
         const reflAngleDownLeft = 2.38 - bias * 0.2
         const reflSpreadDown = 0.22 + Math.abs(bias) * 0.08
         drawRainbowFan(
@@ -150,7 +160,6 @@ export default function ActPrism({ onBiasChange }) {
           false,
         )
 
-        // Reflection C: Steep crystal-base rainbow caustic spill
         const reflAngleBase = 1.28 + bias * 0.18
         drawRainbowFan(
           pCtx,
@@ -193,7 +202,6 @@ export default function ActPrism({ onBiasChange }) {
 
         // 4. 3D TETRAHEDRON BACK FACETS, INTERNAL DISPERSION & FRONT CRYSTAL FACETS
         pCtx.save()
-        // Rear face (p0, p1, p2) & Underside base face (p1, p2, p3) drawn behind internal rainbow
         pCtx.fillStyle = 'rgba(160, 195, 255, 0.024)'
         pCtx.strokeStyle = 'rgba(255, 255, 255, 0.13)'
         pCtx.lineWidth = 0.8
@@ -215,7 +223,6 @@ export default function ActPrism({ onBiasChange }) {
         pCtx.stroke()
         pCtx.restore()
 
-        // Internal rainbow dispersion fanning through the interior of the glass tetrahedron
         const internalAngle = Math.atan2(exitPt.y - entryPt.y, exitPt.x - entryPt.x)
         const internalDist = Math.hypot(exitPt.x - entryPt.x, exitPt.y - entryPt.y)
         drawRainbowFan(
@@ -231,7 +238,6 @@ export default function ActPrism({ onBiasChange }) {
           false,
         )
 
-        // Internal rainbow bevel glints along rear & base tetrahedron edges
         pCtx.save()
         pCtx.globalCompositeOperation = 'lighter'
         const edgeRainbow = pCtx.createLinearGradient(p1.x, p1.y, p2.x, p2.y)
@@ -250,9 +256,7 @@ export default function ActPrism({ onBiasChange }) {
         pCtx.stroke()
         pCtx.restore()
 
-        // Front two smoked-glass triangular facets + sharp central crystal ridge (p0 -> p3)
         pCtx.save()
-        // Front-Left Entry Facet (p0, p1, p3)
         pCtx.fillStyle = 'rgba(255, 255, 255, 0.032)'
         pCtx.strokeStyle = 'rgba(255, 255, 255, 0.28)'
         pCtx.lineWidth = 0.95
@@ -264,7 +268,6 @@ export default function ActPrism({ onBiasChange }) {
         pCtx.fill()
         pCtx.stroke()
 
-        // Front-Right Exit Facet (p0, p3, p2)
         pCtx.fillStyle = 'rgba(220, 238, 255, 0.046)'
         pCtx.strokeStyle = 'rgba(255, 255, 255, 0.36)'
         pCtx.beginPath()
@@ -275,7 +278,6 @@ export default function ActPrism({ onBiasChange }) {
         pCtx.fill()
         pCtx.stroke()
 
-        // Crisp specular highlight along the front apex-to-base ridge (p0 -> p3)
         const ridgeGrad = pCtx.createLinearGradient(p0.x, p0.y, p3.x, p3.y)
         ridgeGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.88)')
         ridgeGrad.addColorStop(0.55, 'rgba(225, 240, 255, 0.52)')
@@ -384,64 +386,75 @@ export default function ActPrism({ onBiasChange }) {
 
   return (
     <section
+      ref={sectionRef}
       id="refraction"
       onMouseMove={handlePointerMove}
       onTouchMove={handlePointerMove}
-      className="relative min-h-svh w-full flex flex-col justify-end p-6 md:p-11 overflow-hidden bg-[#020204]"
+      className="relative min-h-svh w-full flex flex-col justify-end p-6 md:p-11 pb-12 md:pb-16 overflow-hidden"
     >
-      {/* Full-Bleed Optical Prism & Light-Bias Canvas */}
+      {/* Full-Bleed Optical Tetrahedron & Light-Bias Canvas (soft bottom edge fade into void) */}
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full z-0 cursor-crosshair"
+        style={{
+          maskImage: 'linear-gradient(to bottom, black 0%, black 86%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 86%, transparent 100%)',
+        }}
       />
 
-      {/* Restrained Bottom Editorial & Wavelength Legend (pinkfloyd.com typography system) */}
-      <div className="relative z-20 flex flex-wrap items-end justify-between gap-8 pt-64 pointer-events-none">
+      {/* Frameless pinkfloyd.com Editorial Composition with smooth scroll-exit fade */}
+      <div
+        className="relative z-20 flex flex-wrap items-end justify-between gap-10 pt-64 pointer-events-none transition-transform duration-150"
+        style={{
+          opacity: Math.max(0.08, 1 - exitRatio * 0.92),
+          transform: `translateY(${(-exitRatio * 28).toFixed(1)}px)`,
+        }}
+      >
         {/* Bottom-Left Positioning Copy */}
         <div className="max-w-lg space-y-3">
-          <p className="font-pf-label text-[12px] uppercase text-white/40">
+          <p className="font-pf-label text-[11px] uppercase text-white/40">
             {PORTFOLIO_DATA.hero.prompt}
           </p>
           <h1 className="font-pf-main font-normal text-3xl sm:text-5xl uppercase leading-[1.08] text-white/95">
             {PORTFOLIO_DATA.hero.headlineTop}
             <br />
-            <span className="text-white/70">{PORTFOLIO_DATA.hero.headlineItalic}</span>
+            <span className="text-white/65">{PORTFOLIO_DATA.hero.headlineItalic}</span>
           </h1>
-          <p className="font-pf-main text-[13.5px] sm:text-[14.5px] text-white/50 leading-[1.4] max-w-md">
+          <p className="font-pf-main text-[13.5px] sm:text-[14.5px] text-white/45 leading-[1.45] max-w-md">
             {PORTFOLIO_DATA.hero.bio}
           </p>
 
-          <div className="pt-2.5 flex items-center gap-6 pointer-events-auto font-pf-label text-[12px] uppercase">
+          <div className="pt-3 flex items-center gap-7 pointer-events-auto font-pf-label text-[12px] uppercase">
             <a
-              href="#works"
-              className="text-white/90 hover:text-white transition-colors flex items-center gap-2"
+              href="#breathe"
+              className="text-white/90 hover:text-amber-300 transition-colors flex items-center gap-2"
             >
-              <span>EXPLORE WORKS</span>
-              <span className="text-white/50">↓</span>
+              <span>DESCEND</span>
+              <span className="text-white/45">↓</span>
             </a>
             <a
               href={PORTFOLIO_DATA.socials.github}
               target="_blank"
               rel="noreferrer"
-              className="text-white/50 hover:text-white/95 transition-colors"
+              className="text-white/45 hover:text-white transition-colors"
             >
               @{PORTFOLIO_DATA.handle} →
             </a>
           </div>
         </div>
 
-        {/* Bottom-Right Subtle Refracted Wavelength Index */}
-        <div className="obsidian-panel rounded-xl px-4 py-3.5 pointer-events-auto w-full sm:w-auto min-w-[265px] space-y-2">
-          <div className="flex items-center justify-between gap-4 pb-1.5 border-b border-white/[0.06]">
+        {/* Bottom-Right Frameless Wavelength Index (Zero rounded glass box — raw editorial rows) */}
+        <div className="pointer-events-auto w-full sm:w-auto min-w-[260px]">
+          <div className="flex items-center justify-between gap-4 pb-2 border-b border-white/[0.12]">
             <span className="font-pf-label text-[11px] text-white/40 uppercase">
-              REFRACTED SPECTRUM
+              SPECTRUM
             </span>
-            <span className="font-pf-label text-[11px] text-white/30 uppercase">
+            <span className="font-pf-label text-[11px] text-white/30 uppercase tabular-nums">
               {activeDiscipline ? activeDiscipline.nm : '410–680NM'}
             </span>
           </div>
 
-          <ul className="space-y-1.5">
+          <ul className="divide-y divide-white/[0.06]">
             {PORTFOLIO_DATA.wavelengths.map((w) => {
               const isHovered = activeDiscipline?.nm === w.nm
               return (
@@ -452,19 +465,19 @@ export default function ActPrism({ onBiasChange }) {
                     targetBiasRef.current = w.biasPreset
                   }}
                   onMouseLeave={() => setActiveDiscipline(null)}
-                  className="flex items-center justify-between gap-6 cursor-pointer group py-0.5"
+                  className="flex items-center justify-between gap-8 cursor-pointer group py-2"
                 >
-                  <span className="flex items-center gap-2 font-pf-label text-[11px] uppercase text-white/45 group-hover:text-white/90 transition-colors">
+                  <span className="flex items-center gap-2.5 font-pf-label text-[11px] uppercase text-white/40 group-hover:text-white transition-colors">
                     <span
                       className="w-1.5 h-1.5 rounded-full transition-transform duration-200 group-hover:scale-125"
                       style={{
                         backgroundColor: w.color,
-                        boxShadow: isHovered ? `0 0 8px ${w.color}` : 'none',
+                        boxShadow: isHovered ? `0 0 10px ${w.color}` : 'none',
                       }}
                     />
                     {w.nm}
                   </span>
-                  <span className="font-pf-main font-medium text-[12.5px] uppercase text-white/65 group-hover:text-white transition-colors text-right">
+                  <span className="font-pf-main font-medium text-[12.5px] uppercase text-white/60 group-hover:text-white transition-colors text-right">
                     {w.domain}
                   </span>
                 </li>
@@ -473,6 +486,16 @@ export default function ActPrism({ onBiasChange }) {
           </ul>
         </div>
       </div>
+
+      {/* Delicate vertical optical thread leading eye downward into the Eclipse interlude */}
+      <div
+        aria-hidden="true"
+        className="absolute bottom-0 left-1/2 -translate-x-1/2 w-px h-16 z-20 pointer-events-none"
+        style={{
+          background:
+            'linear-gradient(180deg, transparent 0%, rgba(255, 208, 12, 0.35) 55%, rgba(255, 110, 20, 0.55) 100%)',
+        }}
+      />
     </section>
   )
 }

@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import ActPrism from './acts/ActPrism'
 import InterludeBreathe from './acts/InterludeBreathe'
+import CosmicBackdrop from './components/CosmicBackdrop'
 import SpectrumHUD from './components/SpectrumHUD'
 
 export default function App() {
@@ -12,27 +13,26 @@ export default function App() {
 
   return (
     <div className="relative min-h-screen bg-[#020204] text-slate-100">
+      {/* Shared persistent deep-space starfield running seamlessly behind every Act */}
+      <CosmicBackdrop />
+
       {/* Global subtle analog dark-room grain */}
       <div className="dark-grain fixed inset-0 z-50" aria-hidden="true" />
 
-      {/* Persistent minimal corner coordinates & right-edge spectrum rail */}
+      {/* Persistent pinkfloyd.com-inspired header & active chapter indicator */}
       <SpectrumHUD biasAngle={biasAngle} />
 
-      <main>
-        {/* ACT I: Incidence & Light Bias (Complete) */}
+      <main className="relative z-10">
+        {/* ACT I: 3D Glass Tetrahedron & Light Bias */}
         <ActPrism onBiasChange={handleBiasChange} />
 
-        <div className="spectral-hairline opacity-35" />
-
-        {/* INTERLUDE: "Breathe (In the Air)" Quote + Live Solar Eclipse */}
+        {/* INTERLUDE: "Breathe (In the Air)" Quote + Live Solar Eclipse (Seamless, zero divider bar) */}
         <InterludeBreathe />
 
-        <div className="spectral-hairline opacity-25" />
-
-        {/* Upcoming Acts staged cleanly for Act-by-Act build */}
+        {/* Upcoming Acts staged cleanly in the same continuous void */}
         <section
           id="works"
-          className="min-h-[36vh] flex flex-col items-center justify-center px-6 text-center border-b border-white/[0.04]"
+          className="min-h-[42vh] flex flex-col items-center justify-center px-6 text-center"
         >
           <span className="font-pf-label text-[11px] uppercase text-white/35">
             ACT II · STAGED NEXT
@@ -44,7 +44,7 @@ export default function App() {
 
         <section
           id="canvas"
-          className="min-h-[28vh] flex flex-col items-center justify-center px-6 text-center border-b border-white/[0.04]"
+          className="min-h-[30vh] flex flex-col items-center justify-center px-6 text-center"
         >
           <span className="font-pf-label text-[11px] uppercase text-white/30">
             ACT III · RESERVED SLOT
@@ -56,7 +56,7 @@ export default function App() {
 
         <section
           id="signal"
-          className="min-h-[28vh] flex flex-col items-center justify-center px-6 text-center"
+          className="min-h-[30vh] flex flex-col items-center justify-center px-6 text-center"
         >
           <span className="font-pf-label text-[11px] uppercase text-white/30">
             ACT IV · STAGED FINALE

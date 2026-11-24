@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { PORTFOLIO_DATA } from '../data/portfolio'
 
 const VERT_SRC = `
@@ -8,22 +8,15 @@ const VERT_SRC = `
   }
 `
 
-// Photorealistic Total Eclipse + Diamond-Ring Solar Burst Shader:
-// Crisp razor-thin golden-orange ring (bright left/right arcs, smoldering poles),
-// concentrated blazing lower-right solar flare, warm copper lens bleed inside the dark Moon,
-// micro-prominence pips, and a fine deep-space starfield.
+// Photorealistic Total Eclipse + Diamond-Ring Solar Burst Shader with transparent void alpha:
+// Inside the Moon disc -> opaque #020204 (genuinely occulting the shared CosmicBackdrop stars!)
+// Outside the Moon disc -> smooth optical alpha so the exact same continuous starfield surrounds the Eclipse!
 const FRAG_SRC = `
   precision highp float;
 
   uniform vec2 uRes;
   uniform float uTime;
   uniform float uBurstAngle;
-
-  float hash21(vec2 p) {
-    p = fract(p * vec2(234.34, 435.345));
-    p += dot(p, p + 34.23);
-    return fract(p.x * p.y);
-  }
 
   float hash31(vec3 p) {
     p = fract(p * 0.1031);
@@ -61,7 +54,6 @@ const FRAG_SRC = `
     return v;
   }
 
-  // Blackbody solar fire ramp (deep crimson ember -> molten orange -> bright solar yellow -> white-hot core)
   vec3 solarRamp(float h) {
     float x = clamp(h, 0.0, 1.6);
     vec3 col = mix(vec3(0.0), vec3(0.48, 0.05, 0.005), smoothstep(0.0, 0.10, x));
@@ -70,19 +62,6 @@ const FRAG_SRC = `
     col = mix(col, vec3(1.00, 0.90, 0.24), smoothstep(0.58, 0.92, x));
     col = mix(col, vec3(1.00, 0.99, 0.86), smoothstep(0.92, 1.40, x));
     return col;
-  }
-
-  // Sub-pixel pinpoint starfield layer
-  float starLayer(vec2 pix, float scale, float density, float t) {
-    vec2 gv = fract(pix / scale) - 0.5;
-    vec2 id = floor(pix / scale);
-    float n = hash21(id);
-    if (n < density) return 0.0;
-    vec2 offset = vec2(fract(n * 34.56) - 0.5, fract(n * 78.12) - 0.5) * 0.65;
-    float d = length(gv - offset) * scale;
-    float brightness = fract(n * 913.7);
-    float twinkle = 0.72 + 0.28 * sin(t * (0.8 + brightness * 1.6) + n * 62.8);
-    return smoothstep(1.35, 0.15, d) * (0.12 + 0.48 * pow(brightness, 2.4)) * twinkle;
   }
 
   vec3 aces(vec3 x) {
@@ -94,22 +73,17 @@ const FRAG_SRC = `
     vec2 sunCenter = vec2(0.0, 0.055);
     vec2 p = uv - sunCenter;
 
-    // Commanding, iconic Eclipse ring radius
     float sunR = 0.205;
     float r = length(p);
     vec2 dir = p / max(r, 1e-4);
     float dRim = r - sunR;
 
-    // 1. RAZOR-THIN GOLDEN-ORANGE LIMB RING WITH ASYMMETRIC ARC INTENSITY
-    // Bright blazing golden arcs on Left & Right limbs; thin smoldering burnt-crimson at Top & Bottom poles
+    // 1. RAZOR-THIN GOLDEN-ORANGE LIMB RING (bright left/right arcs, smoldering top/bottom poles)
     float arcWeight = 0.14 + 0.86 * pow(abs(dir.x), 1.45);
-
-    // Subtle boiling chromosphere granulation + tiny micro-prominence pips kissing the outer rim
     float gran = 0.84 + 0.32 * fbm(vec3(dir * 16.0, uTime * 0.2));
     float pips = pow(fbm(vec3(dir * 34.0, r * 24.0 - uTime * 0.32)), 3.4);
     float pipExtend = pips * 0.009 * (0.4 + 0.6 * arcWeight);
 
-    // Tack-sharp inner lunar edge, tight fiery outer falloff
     float innerEdge = smoothstep(-0.0024, 0.0004, dRim);
     float dOuter = max(dRim - pipExtend, 0.0);
 
@@ -117,29 +91,25 @@ const FRAG_SRC = `
     float ringFire = exp(-dOuter * 48.0) * 0.52 * (0.28 + 0.72 * arcWeight) * (0.8 + 0.4 * pips);
     float ringAmbient = exp(-abs(dRim) * 14.0) * 0.085 * (0.35 + 0.65 * arcWeight);
 
-    // Tiny localized secondary prominence tuft near ~1 o'clock (like real eclipse chromosphere pips)
     float topPipMask = pow(max(0.0, dot(dir, normalize(vec2(0.28, 0.96)))), 48.0);
     float topPip = exp(-max(dRim, 0.0) * 55.0) * innerEdge * topPipMask * (0.45 + 0.55 * pips) * 0.65;
 
     float rimHeat = (ringCore + ringFire + topPip) * innerEdge + ringAmbient * smoothstep(-0.03, 0.0, dRim);
 
-    // 2. SINGULAR BLAZING LOWER-RIGHT SOLAR FLARE / DIAMOND-RING BURST (~4 o'clock)
+    // 2. SINGULAR BLAZING LOWER-RIGHT SOLAR FLARE (~4 o'clock)
     vec2 burstDir = vec2(cos(uBurstAngle), sin(uBurstAngle));
     vec2 burstPos = burstDir * sunR;
     vec2 dp = p - burstPos;
     float dBurst = length(dp);
 
-    // Slightly vertically-sheared & flame-licked plasma contour around the eruption point
     vec2 burstLocal = vec2(dp.x * 1.12, dp.y * 0.84);
     float flameWarp = (fbm(vec3(dp * 28.0, uTime * 0.38)) - 0.48) * 0.016;
     float dWarped = max(0.0, length(burstLocal) + flameWarp * smoothstep(0.004, 0.06, dBurst));
 
-    // Searing white-yellow core + rich molten orange flare + wide warm crimson atmospheric scatter
     float flareCore = exp(-dWarped * 48.0) * 2.55;
     float flareOrange = exp(-dWarped * 18.5) * 0.92;
     float flareHaze = exp(-dBurst * 6.8) * 0.24;
 
-    // Subtle irregular flame tongues licking outward from the 4 o'clock burst
     float burstCone = pow(max(0.0, dot(dir, burstDir)), 12.0);
     float burstTongues = exp(-max(dRim, 0.0) * 22.0) * innerEdge * burstCone * pow(fbm(vec3(dir * 22.0, r * 14.0 - uTime * 0.42)), 1.6) * 1.15;
 
@@ -147,30 +117,38 @@ const FRAG_SRC = `
     vec3 fireLinear = solarRamp(totalHeat) * totalHeat * 1.25
                     + vec3(0.75, 0.14, 0.015) * flareHaze;
 
-    // 3. AUTHENTIC INNER-MOON OPTICAL LIGHT BLEED (Warm copper-amber lens scatter on right edge of dark Moon)
+    // Whisper-subtle chromatic lens fringe on the outer edge of the 4 o'clock burst
+    // (visually echoes Act I's optical prism lens without losing the pure solar fire palette)
+    float fringe = exp(-abs(dBurst - 0.095) * 32.0) * 0.065;
+    fireLinear += vec3(0.05, 0.42, 0.85) * fringe;
+
+    // 3. INNER-MOON OPTICAL LIGHT BLEED (Warm copper scatter on right edge inside the opaque dark Moon)
+    float insideMoon = 1.0 - smoothstep(sunR - 0.003, sunR + 0.001, r);
     if (r < sunR) {
       float innerScatter = exp(-dBurst * 6.5) * smoothstep(sunR * 0.15, sunR, r);
       fireLinear += vec3(0.58, 0.13, 0.012) * innerScatter * 0.34;
     }
 
-    // 4. FINE DEEP-SPACE STARFIELD (strictly outside the Moon disc)
-    float outsideMoon = smoothstep(sunR + 0.002, sunR + 0.012, r);
-    float glareSuppress = 1.0 - clamp(totalHeat * 0.85 + flareHaze * 1.8, 0.0, 0.92);
-    float s1 = starLayer(gl_FragCoord.xy, 19.0, 0.72, uTime);
-    float s2 = starLayer(gl_FragCoord.xy + vec2(113.0, 57.0), 34.0, 0.62, uTime);
-    float stars = (s1 * 0.65 + s2 * 0.95) * outsideMoon * glareSuppress;
-    vec3 starCol = mix(vec3(0.85, 0.90, 1.0), vec3(1.0, 0.92, 0.78), hash21(floor(gl_FragCoord.xy / 19.0))) * stars;
-
     vec3 mappedFire = pow(aces(fireLinear), vec3(1.0 / 2.2));
-    vec3 baseVoid = vec3(0.00784, 0.00784, 0.01569); // #020204
-    vec3 finalCol = max(baseVoid, mappedFire + baseVoid * (1.0 - clamp(length(mappedFire) * 2.0, 0.0, 1.0))) + starCol;
+    vec3 moonVoid = vec3(0.00784, 0.00784, 0.01569); // #020204
 
-    gl_FragColor = vec4(clamp(finalCol, 0.0, 1.0), 1.0);
+    // Alpha = 1.0 inside the Moon (occults background stars cleanly), smooth glow alpha outside
+    float glowLum = max(mappedFire.r, max(mappedFire.g, mappedFire.b));
+    float outAlpha = clamp(glowLum * 1.65, 0.0, 1.0);
+    float alpha = max(insideMoon, outAlpha);
+
+    vec3 finalRgb = mix(mappedFire, max(moonVoid, mappedFire), insideMoon);
+    gl_FragColor = vec4(clamp(finalRgb, 0.0, 1.0), alpha);
   }
 `
 
 function initEclipseGL(canvas) {
-  const gl = canvas.getContext('webgl', { antialias: false, powerPreference: 'high-performance' })
+  const gl = canvas.getContext('webgl', {
+    alpha: true,
+    premultipliedAlpha: false,
+    antialias: false,
+    powerPreference: 'high-performance',
+  })
   if (!gl) return null
 
   const compile = (type, src) => {
@@ -217,28 +195,32 @@ function initEclipseGL(canvas) {
 export default function InterludeBreathe() {
   const sectionRef = useRef(null)
   const canvasRef = useRef(null)
-  // Default ~ -0.24 rad (~3:45 o'clock lower-right solar flare, matching the reference composition)
   const targetAngleRef = useRef(-0.24)
   const smoothAngleRef = useRef(-0.24)
+  const [revealProgress, setRevealProgress] = useState(0)
 
   useEffect(() => {
-    const updateScrollAngle = () => {
+    const updateScrollChoreography = () => {
       const el = sectionRef.current
       if (!el) return
       const rect = el.getBoundingClientRect()
       const vh = window.innerHeight || 1
       const progress = (vh * 0.5 - (rect.top + rect.height * 0.5)) / vh
-      // Gently glide the blazing limb burst along the right arc (-0.12 -> -0.34 rad) as you scroll past
+
       targetAngleRef.current = -0.24 - Math.max(-0.5, Math.min(0.5, progress)) * 0.24
+
+      // Smooth cinematic reveal: peaks at 1.0 when section is centered in viewport
+      const visibility = 1 - Math.min(1, Math.abs(progress) * 1.35)
+      setRevealProgress(Math.max(0, visibility))
     }
 
-    window.addEventListener('scroll', updateScrollAngle, { passive: true })
-    window.addEventListener('resize', updateScrollAngle)
-    updateScrollAngle()
+    window.addEventListener('scroll', updateScrollChoreography, { passive: true })
+    window.addEventListener('resize', updateScrollChoreography)
+    updateScrollChoreography()
 
     return () => {
-      window.removeEventListener('scroll', updateScrollAngle)
-      window.removeEventListener('resize', updateScrollAngle)
+      window.removeEventListener('scroll', updateScrollChoreography)
+      window.removeEventListener('resize', updateScrollChoreography)
     }
   }, [])
 
@@ -262,6 +244,8 @@ export default function InterludeBreathe() {
         canvas.height = h
       }
       gl.viewport(0, 0, w, h)
+      gl.clearColor(0, 0, 0, 0)
+      gl.clear(gl.COLOR_BUFFER_BIT)
 
       smoothAngleRef.current += (targetAngleRef.current - smoothAngleRef.current) * 0.05
       const subtleDrift = Math.sin(ts * 0.0005) * 0.02
@@ -286,16 +270,38 @@ export default function InterludeBreathe() {
       ref={sectionRef}
       id="breathe"
       aria-label="Breathe Eclipse Interlude"
-      className="relative min-h-[96svh] w-full flex flex-col items-center justify-end px-6 pb-14 md:pb-20 overflow-hidden bg-[#020204]"
+      className="relative min-h-[100svh] w-full flex flex-col items-center justify-end px-6 pb-16 md:pb-24 overflow-hidden"
     >
-      {/* Monumental Razor-Sharp Solar Eclipse & 4-O'Clock Flare Canvas */}
+      {/* Delicate top thread continuing smoothly from Act I */}
+      <div
+        aria-hidden="true"
+        className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-16 z-10 pointer-events-none"
+        style={{
+          background:
+            'linear-gradient(180deg, rgba(255, 110, 20, 0.55) 0%, rgba(255, 110, 20, 0.12) 60%, transparent 100%)',
+        }}
+      />
+
+      {/* Transparent-Void Solar Eclipse Canvas (Moon occults the shared CosmicBackdrop stars!) */}
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full z-0 pointer-events-none"
+        style={{
+          maskImage:
+            'linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%)',
+          WebkitMaskImage:
+            'linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%)',
+        }}
       />
 
-      {/* Quote & Attribution poised beneath the Eclipse */}
-      <figure className="relative z-10 max-w-2xl mx-auto text-center space-y-3.5 pt-96">
+      {/* Scroll-Choreographed Quote & Attribution */}
+      <figure
+        className="relative z-10 max-w-2xl mx-auto text-center space-y-3.5 pt-96 transition-transform duration-150"
+        style={{
+          opacity: 0.18 + revealProgress * 0.82,
+          transform: `translateY(${((1 - revealProgress) * 18).toFixed(1)}px)`,
+        }}
+      >
         <blockquote className="font-pf-main font-normal text-lg sm:text-2xl md:text-[26px] uppercase leading-[1.25] text-white/90 tracking-[-0.01em]">
           &ldquo;{quote}&rdquo;
         </blockquote>
@@ -303,6 +309,16 @@ export default function InterludeBreathe() {
           &mdash; &ldquo;{source}&rdquo;
         </figcaption>
       </figure>
+
+      {/* Delicate bottom thread leading into Act II */}
+      <div
+        aria-hidden="true"
+        className="absolute bottom-0 left-1/2 -translate-x-1/2 w-px h-14 z-10 pointer-events-none"
+        style={{
+          background:
+            'linear-gradient(180deg, transparent 0%, rgba(255, 180, 70, 0.28) 65%, rgba(0, 210, 255, 0.35) 100%)',
+        }}
+      />
     </section>
   )
 }
