@@ -74,11 +74,11 @@ export default function RepoArchiveDrawer({ isOpen, onClose, repos, status }) {
       {/* Pitch-dark backdrop */}
       <div
         onClick={onClose}
-        className="absolute inset-0 bg-[#020204]/85 backdrop-blur-md transition-opacity"
+        className="absolute inset-0 bg-[#020204]/85 backdrop-blur-md animate-pf-fade"
       />
 
       {/* Frameless Archive Panel bounded by a razor-thin vertical spectral hairline */}
-      <aside className="relative z-10 w-full max-w-2xl h-full bg-[#020204]/95 flex flex-col overflow-hidden">
+      <aside className="relative z-10 w-full max-w-2xl h-full bg-[#020204]/95 flex flex-col overflow-hidden animate-pf-drawer">
         {/* Left vertical spectral seam */}
         <div
           aria-hidden="true"

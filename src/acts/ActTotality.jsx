@@ -275,6 +275,7 @@ export default function ActTotality({ onReplayIntro }) {
   // Subtle POV look parallax & single gentle user-clicked star glint
   const pointerRef = useRef({ x: 0, y: 0, active: false })
   const clickStarRef = useRef({ x: 0.5, y: 0.65, age: -1 })
+  const visibleRef = useRef(true)
 
   // Live WIB (UTC+7) clock
   useEffect(() => {
@@ -282,6 +283,20 @@ export default function ActTotality({ onReplayIntro }) {
     updateClock()
     const timer = window.setInterval(updateClock, 1000)
     return () => window.clearInterval(timer)
+  }, [])
+
+  // Pause WebGL dark Moon shader while scrolled far above Act IV
+  useEffect(() => {
+    const el = moonCanvasRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return undefined
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        visibleRef.current = entry.isIntersecting
+      },
+      { rootMargin: '280px 0px' },
+    )
+    io.observe(el)
+    return () => io.disconnect()
   }, [])
 
   // 60fps WebGL Photorealistic Dark Moon Surface + 3 Rare Subtle Glinting Stars
@@ -350,6 +365,11 @@ export default function ActTotality({ onReplayIntro }) {
     const render = (now) => {
       const dt = Math.min((now - lastTs) / 1000, 0.05)
       lastTs = now
+
+      if (!visibleRef.current) {
+        rafId = requestAnimationFrame(render)
+        return
+      }
 
       syncSize()
 

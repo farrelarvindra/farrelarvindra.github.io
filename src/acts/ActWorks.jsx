@@ -89,8 +89,16 @@ export default function ActWorks() {
                 return (
                   <li
                     key={p.id}
+                    tabIndex={0}
                     onMouseEnter={() => setActiveIdx(idx)}
+                    onFocus={() => setActiveIdx(idx)}
                     onClick={() => setActiveIdx(idx)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setActiveIdx(idx)
+                      }
+                    }}
                     className="py-5 cursor-pointer group flex items-center justify-between gap-6 transition-colors"
                   >
                     <div className="flex items-baseline gap-5 min-w-0">

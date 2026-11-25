@@ -35,8 +35,11 @@ function TasteTile({ item, accent, isPortraitArt, isHovered, isDimmed, onEnter, 
 
   return (
     <article
+      tabIndex={0}
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
+      onFocus={onEnter}
+      onBlur={onLeave}
       className={`group relative aspect-square overflow-hidden bg-[#040407] border transition-all duration-500 ${
         isDimmed ? 'opacity-65' : 'opacity-100'
       }`}
@@ -117,12 +120,31 @@ export default function ActTaste() {
 
   const targetRef = useRef({ x: -999, y: -999, active: false })
   const smoothRef = useRef({ x: 0, y: 0, opacity: 0 })
+  const visibleRef = useRef(true)
+
+  // Pause cursor spotlight RAF when Act III is offscreen
+  useEffect(() => {
+    const el = sectionRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return undefined
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        visibleRef.current = entry.isIntersecting
+      },
+      { rootMargin: '250px 0px' },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
 
   // 60fps smooth cursor spotlight interpolation (zero React re-renders per mousemove)
   useEffect(() => {
     let rafId = 0
 
     const tick = () => {
+      if (!visibleRef.current) {
+        rafId = requestAnimationFrame(tick)
+        return
+      }
       const target = targetRef.current
       const cur = smoothRef.current
 

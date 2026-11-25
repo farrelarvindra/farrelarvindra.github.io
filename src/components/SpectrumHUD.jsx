@@ -1,57 +1,126 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { PORTFOLIO_DATA } from '../data/portfolio'
 import { spectralRGB } from '../utils/optics'
 
 const NAV_ITEMS = [
-  { id: 'refraction', label: 'Refraction' },
-  { id: 'breathe', label: 'Eclipse' },
-  { id: 'works', label: 'Works' },
-  { id: 'canvas', label: 'Taste' },
-  { id: 'signal', label: 'Signal' },
+  { id: 'refraction', num: '01', label: 'Refraction' },
+  { id: 'breathe', num: '02', label: 'Eclipse' },
+  { id: 'works', num: '03', label: 'Works' },
+  { id: 'canvas', num: '04', label: 'Taste' },
+  { id: 'signal', num: '05', label: 'Signal' },
 ]
 
 export default function SpectrumHUD({ biasAngle = 28, onReplayIntro }) {
-  const [scrollProgress, setScrollProgress] = useState(0)
   const [activeId, setActiveId] = useState('refraction')
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  // Direct DOM refs for 0ms real-time GPU-composited scroll sync (zero CSS transition lag, zero scroll re-renders)
+  const railFillRef = useRef(null)
+  const railHeadRef = useRef(null)
+  const activeUnderlineRef = useRef(null)
+  const activeIdRef = useRef('refraction')
+  const accentRef = useRef('rgb(255, 32, 68)')
 
   useEffect(() => {
-    const onScroll = () => {
+    const syncScroll = () => {
+      const scrollTop = window.scrollY
       const docHeight = document.documentElement.scrollHeight - window.innerHeight
-      const progress = docHeight > 0 ? Math.min(1, Math.max(0, window.scrollY / docHeight)) : 0
-      setScrollProgress(progress)
+      const progress = docHeight > 0 ? Math.min(1, Math.max(0, scrollTop / docHeight)) : 0
 
-      // Determine active chapter based on viewport center
-      const probeY = window.innerHeight * 0.42
+      const [r, g, b] = spectralRGB(progress)
+      const accentColor = `rgb(${r}, ${g}, ${b})`
+      accentRef.current = accentColor
+
+      // 1. Instant hardware-accelerated right-edge spectral rail update (no transition lag!)
+      if (railFillRef.current) {
+        railFillRef.current.style.transform = `scaleY(${Math.max(0.02, progress).toFixed(4)})`
+        railFillRef.current.style.background = `linear-gradient(180deg, rgba(255,255,255,0.28), ${accentColor})`
+        railFillRef.current.style.boxShadow = `0 0 10px ${accentColor}`
+      }
+
+      if (railHeadRef.current) {
+        railHeadRef.current.style.top = `${(progress * 100).toFixed(2)}%`
+        railHeadRef.current.style.backgroundColor = accentColor
+        railHeadRef.current.style.boxShadow = `0 0 10px 2px ${accentColor}`
+      }
+
+      if (activeUnderlineRef.current) {
+        activeUnderlineRef.current.style.backgroundColor = accentColor
+        activeUnderlineRef.current.style.boxShadow = `0 0 8px ${accentColor}`
+      }
+
+      // 2. Real-time active chapter detection (including clean bottom-of-page lock onto Signal)
       let current = 'refraction'
-      for (const item of NAV_ITEMS) {
-        const el = document.getElementById(item.id)
-        if (!el) continue
-        const rect = el.getBoundingClientRect()
-        if (rect.top <= probeY) {
-          current = item.id
+      if (docHeight > 0 && scrollTop >= docHeight - 28) {
+        current = 'signal'
+      } else {
+        const probeY = window.innerHeight * 0.38
+        for (const item of NAV_ITEMS) {
+          const el = document.getElementById(item.id)
+          if (!el) continue
+          const rect = el.getBoundingClientRect()
+          if (rect.top <= probeY) {
+            current = item.id
+          }
         }
       }
-      setActiveId(current)
+
+      if (current !== activeIdRef.current) {
+        activeIdRef.current = current
+        setActiveId(current)
+      }
     }
 
-    window.addEventListener('scroll', onScroll, { passive: true })
-    onScroll()
-    return () => window.removeEventListener('scroll', onScroll)
+    // Also resync whenever lazy-loaded artwork changes total page height
+    const ro = new ResizeObserver(syncScroll)
+    ro.observe(document.documentElement)
+
+    window.addEventListener('scroll', syncScroll, { passive: true })
+    window.addEventListener('resize', syncScroll, { passive: true })
+    syncScroll()
+
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('scroll', syncScroll)
+      window.removeEventListener('resize', syncScroll)
+    }
   }, [])
 
-  const [r, g, b] = spectralRGB(scrollProgress)
-  const accentColor = `rgb(${r}, ${g}, ${b})`
+  // Keep newly mounted active underline tinted accurately when activeId switches
+  useEffect(() => {
+    if (activeUnderlineRef.current) {
+      activeUnderlineRef.current.style.backgroundColor = accentRef.current
+      activeUnderlineRef.current.style.boxShadow = `0 0 8px ${accentRef.current}`
+    }
+  }, [activeId])
+
+  // Lock background scroll & support ESC when mobile menu is open
+  useEffect(() => {
+    if (!mobileMenuOpen) return undefined
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setMobileMenuOpen(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.body.style.overflow = prevOverflow
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [mobileMenuOpen])
+
+  const activeLabel = NAV_ITEMS.find((n) => n.id === activeId)?.label || 'Refraction'
 
   return (
     <>
-      {/* Minimal pinkfloyd.com-inspired floating top bar: masthead left, quiet emblem center, active chapter nav right */}
-      <header className="fixed top-0 inset-x-0 z-40 flex items-center justify-between px-6 py-5 md:px-11 md:py-7 pointer-events-none bg-gradient-to-b from-[#020204]/85 via-[#020204]/35 to-transparent">
+      {/* Minimal pinkfloyd.com-inspired floating top bar */}
+      <header className="fixed top-0 inset-x-0 z-40 flex items-center justify-between px-6 py-5 md:px-11 md:py-7 pointer-events-none bg-gradient-to-b from-[#020204]/90 via-[#020204]/40 to-transparent">
         <a href="#refraction" className="group pointer-events-auto">
           <div className="font-pf-wordmark text-xl md:text-2xl uppercase leading-none text-white/95 group-hover:text-white transition">
             {PORTFOLIO_DATA.name}
           </div>
-          <div className="font-pf-label text-[11px] uppercase text-white/35 mt-1 flex items-center gap-2">
-            <span>{activeId.toUpperCase()}</span>
+          <div className="font-pf-label text-[11px] uppercase text-white/38 mt-1 flex items-center gap-2">
+            <span>{activeLabel}</span>
             <span className="text-white/20">·</span>
             <span className="tabular-nums text-white/50">
               {biasAngle >= 0 ? `+${biasAngle}°` : `${biasAngle}°`}
@@ -78,9 +147,10 @@ export default function SpectrumHUD({ biasAngle = 28, onReplayIntro }) {
           />
         </a>
 
+        {/* Desktop Chapter Navigation */}
         <nav
           aria-label="Portfolio sections"
-          className="hidden sm:flex items-center gap-7 pointer-events-auto"
+          className="hidden sm:flex items-center gap-6 md:gap-7 pointer-events-auto"
         >
           {NAV_ITEMS.map((item) => {
             const isActive = activeId === item.id
@@ -95,11 +165,8 @@ export default function SpectrumHUD({ biasAngle = 28, onReplayIntro }) {
                 {item.label}
                 {isActive && (
                   <span
+                    ref={activeUnderlineRef}
                     className="absolute left-0 right-0 -bottom-0.5 h-px"
-                    style={{
-                      backgroundColor: accentColor,
-                      boxShadow: `0 0 8px ${accentColor}`,
-                    }}
                   />
                 )}
               </a>
@@ -109,7 +176,7 @@ export default function SpectrumHUD({ biasAngle = 28, onReplayIntro }) {
             <button
               type="button"
               onClick={onReplayIntro}
-              className="font-pf-label text-[11px] uppercase text-white/40 hover:text-white transition-colors cursor-pointer border-l border-white/10 pl-6"
+              className="font-pf-label text-[11px] uppercase text-white/40 hover:text-white transition-colors cursor-pointer border-l border-white/10 pl-5 md:pl-6"
             >
               INTRO
             </button>
@@ -118,27 +185,146 @@ export default function SpectrumHUD({ biasAngle = 28, onReplayIntro }) {
             href={PORTFOLIO_DATA.socials.github}
             target="_blank"
             rel="noreferrer"
-            className="font-pf-label text-[12px] uppercase text-white/70 hover:text-white transition-colors border-l border-white/10 pl-6"
+            className="font-pf-label text-[12px] uppercase text-white/70 hover:text-white transition-colors border-l border-white/10 pl-5 md:pl-6"
           >
             GITHUB →
           </a>
         </nav>
+
+        {/* Mobile Chapter Menu Trigger (< sm) */}
+        <button
+          type="button"
+          onClick={() => setMobileMenuOpen((v) => !v)}
+          aria-expanded={mobileMenuOpen}
+          aria-label="Toggle section menu"
+          className="sm:hidden pointer-events-auto font-pf-label text-[11px] uppercase tracking-[0.12em] text-white/80 hover:text-white px-3 py-1.5 border border-white/15 bg-[#020204]/70 backdrop-blur-sm cursor-pointer"
+        >
+          {mobileMenuOpen ? 'CLOSE ×' : 'MENU ≡'}
+        </button>
       </header>
 
-      {/* Right-Edge Hairline Spectrum Progress Rail */}
-      <div
-        aria-hidden="true"
-        className="fixed right-3 md:right-5 top-1/2 -translate-y-1/2 h-36 w-px bg-white/[0.07] z-40 hidden md:block pointer-events-none"
-      >
+      {/* Mobile Fullscreen Frameless Chapter Overlay */}
+      {mobileMenuOpen && (
         <div
-          className="w-full transition-all duration-150"
-          style={{
-            height: `${Math.max(8, scrollProgress * 100)}%`,
-            background: `linear-gradient(180deg, rgba(255,255,255,0.25), ${accentColor})`,
-            boxShadow: `0 0 10px ${accentColor}`,
-          }}
-        />
-      </div>
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation menu"
+          className="fixed inset-0 z-50 sm:hidden bg-[#020204]/96 backdrop-blur-md flex flex-col justify-between px-6 py-7 animate-pf-fade"
+        >
+          <div className="flex items-center justify-between">
+            <span className="font-pf-wordmark text-xl uppercase text-white/95">
+              {PORTFOLIO_DATA.name}
+            </span>
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(false)}
+              className="font-pf-label text-[11px] uppercase text-white/70 hover:text-white px-3 py-1.5 border border-white/15 cursor-pointer"
+            >
+              CLOSE ×
+            </button>
+          </div>
+
+          <nav className="flex flex-col divide-y divide-white/[0.08]">
+            {NAV_ITEMS.map((item) => {
+              const isActive = activeId === item.id
+              return (
+                <a
+                  key={item.id}
+                  href={`#${item.id}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-5 flex items-baseline justify-between"
+                >
+                  <span
+                    className={`font-pf-main text-2xl uppercase ${
+                      isActive ? 'text-white' : 'text-white/55'
+                    }`}
+                  >
+                    {item.label}
+                  </span>
+                  <span className="font-pf-label text-[11px] text-white/35 tabular-nums">
+                    {item.num}
+                  </span>
+                </a>
+              )
+            })}
+          </nav>
+
+          <div className="flex items-center justify-between pt-4 border-t border-white/[0.08] font-pf-label text-[11px] uppercase">
+            {onReplayIntro && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false)
+                  onReplayIntro()
+                }}
+                className="text-white/55 hover:text-white cursor-pointer"
+              >
+                REPLAY INTRO ↺
+              </button>
+            )}
+            <a
+              href={PORTFOLIO_DATA.socials.github}
+              target="_blank"
+              rel="noreferrer"
+              className="text-white/80 hover:text-white"
+            >
+              GITHUB →
+            </a>
+          </div>
+        </div>
+      )}
+
+      {/* Right-Edge Real-Time Spectrum Rail + Interactive Chapter Ticks (0ms GPU sync) */}
+      <aside
+        aria-label="Scroll progress and chapter index"
+        className="fixed right-3 md:right-5 top-1/2 -translate-y-1/2 z-40 hidden md:flex items-center gap-3"
+      >
+        {/* Subtle interactive chapter tick buttons */}
+        <div className="flex flex-col justify-between h-44 py-0.5">
+          {NAV_ITEMS.map((item) => {
+            const isActive = activeId === item.id
+            return (
+              <a
+                key={item.id}
+                href={`#${item.id}`}
+                aria-label={`Jump to ${item.label}`}
+                className="group relative flex items-center justify-end gap-2 py-1"
+              >
+                <span
+                  className={`font-pf-label text-[9px] uppercase tracking-[0.08em] transition-opacity duration-150 ${
+                    isActive
+                      ? 'opacity-75 text-white'
+                      : 'opacity-0 group-hover:opacity-80 text-white/60'
+                  }`}
+                >
+                  {item.label}
+                </span>
+                <span
+                  className={`block h-px transition-all duration-150 ${
+                    isActive
+                      ? 'w-3 bg-white/90'
+                      : 'w-1.5 bg-white/20 group-hover:w-2.5 group-hover:bg-white/65'
+                  }`}
+                />
+              </a>
+            )
+          })}
+        </div>
+
+        {/* Continuous real-time 0-lag hairline track */}
+        <div className="relative h-44 w-px bg-white/[0.09] pointer-events-none">
+          <div
+            ref={railFillRef}
+            className="absolute inset-0 origin-top will-change-transform"
+            style={{ transform: 'scaleY(0.02)' }}
+          />
+          <span
+            ref={railHeadRef}
+            className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 w-[5px] h-[5px] rounded-full will-change-transform"
+            style={{ top: '0%' }}
+          />
+        </div>
+      </aside>
     </>
   )
 }

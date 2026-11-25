@@ -218,6 +218,9 @@ function initEclipseGL(canvas) {
   return {
     gl,
     prog,
+    vs,
+    fs,
+    buf,
     uRes: gl.getUniformLocation(prog, 'uRes'),
     uTime: gl.getUniformLocation(prog, 'uTime'),
     uMoonOffset: gl.getUniformLocation(prog, 'uMoonOffset'),
@@ -234,33 +237,51 @@ const MOON_ZONE_RADIUS_FACTOR = 0.31
 export default function InterludeBreathe() {
   const sectionRef = useRef(null)
   const canvasRef = useRef(null)
+  const quoteRef = useRef(null)
+  const visibleRef = useRef(true)
 
   const targetOffsetRef = useRef({ ...CENTER_MOON_OFFSET })
   const smoothOffsetRef = useRef({ ...CENTER_MOON_OFFSET })
   const draggingRef = useRef(false)
   const [nearMoon, setNearMoon] = useState(false)
   const [dragging, setDragging] = useState(false)
-  const [revealProgress, setRevealProgress] = useState(0)
 
+  // Real-time 0-lag scroll choreography via direct DOM ref
   useEffect(() => {
     const updateScrollChoreography = () => {
       const el = sectionRef.current
-      if (!el) return
+      const qEl = quoteRef.current
+      if (!el || !qEl) return
       const rect = el.getBoundingClientRect()
       const vh = window.innerHeight || 1
       const progress = (vh * 0.5 - (rect.top + rect.height * 0.5)) / vh
-      const visibility = 1 - Math.min(1, Math.abs(progress) * 1.35)
-      setRevealProgress(Math.max(0, visibility))
+      const reveal = Math.max(0, 1 - Math.min(1, Math.abs(progress) * 1.35))
+      qEl.style.opacity = (0.18 + reveal * 0.82).toFixed(3)
+      qEl.style.transform = `translate3d(0, ${((1 - reveal) * 18).toFixed(1)}px, 0)`
     }
 
     window.addEventListener('scroll', updateScrollChoreography, { passive: true })
-    window.addEventListener('resize', updateScrollChoreography)
+    window.addEventListener('resize', updateScrollChoreography, { passive: true })
     updateScrollChoreography()
 
     return () => {
       window.removeEventListener('scroll', updateScrollChoreography)
       window.removeEventListener('resize', updateScrollChoreography)
     }
+  }, [])
+
+  // Pause WebGL solar eclipse shader when scrolled offscreen for butter-smooth performance
+  useEffect(() => {
+    const el = sectionRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return undefined
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        visibleRef.current = entry.isIntersecting
+      },
+      { rootMargin: '260px 0px' },
+    )
+    io.observe(el)
+    return () => io.disconnect()
   }, [])
 
   useEffect(() => {
@@ -270,10 +291,14 @@ export default function InterludeBreathe() {
     const state = initEclipseGL(canvas)
     if (!state) return undefined
 
-    const { gl, prog, uRes, uTime, uMoonOffset } = state
+    const { gl, prog, vs, fs, buf, uRes, uTime, uMoonOffset } = state
     let rafId = 0
 
     const render = (ts) => {
+      if (!visibleRef.current) {
+        rafId = requestAnimationFrame(render)
+        return
+      }
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
       const rect = canvas.getBoundingClientRect()
       const w = Math.max(1, Math.round(rect.width * dpr))
@@ -307,7 +332,13 @@ export default function InterludeBreathe() {
     }
 
     rafId = requestAnimationFrame(render)
-    return () => cancelAnimationFrame(rafId)
+    return () => {
+      cancelAnimationFrame(rafId)
+      gl.deleteBuffer(buf)
+      gl.deleteProgram(prog)
+      gl.deleteShader(vs)
+      gl.deleteShader(fs)
+    }
   }, [])
 
   // Only move the Moon when the pointer is within the proximity zone around the Moon (or actively dragging it);
@@ -416,13 +447,10 @@ export default function InterludeBreathe() {
         }}
       />
 
-      {/* Scroll-Choreographed Quote & Attribution */}
+      {/* Real-Time Scroll-Choreographed Quote & Attribution */}
       <figure
-        className="relative z-10 max-w-2xl mx-auto text-center space-y-3.5 pt-96 pointer-events-none transition-transform duration-150"
-        style={{
-          opacity: 0.18 + revealProgress * 0.82,
-          transform: `translateY(${((1 - revealProgress) * 18).toFixed(1)}px)`,
-        }}
+        ref={quoteRef}
+        className="relative z-10 max-w-2xl mx-auto text-center space-y-3.5 pt-96 pointer-events-none will-change-transform"
       >
         <blockquote className="font-pf-main font-normal text-lg sm:text-2xl md:text-[26px] uppercase leading-[1.25] text-white/90 tracking-[-0.01em]">
           &ldquo;{quote}&rdquo;

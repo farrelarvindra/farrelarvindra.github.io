@@ -185,6 +185,9 @@ function initCometGL(canvas) {
   return {
     gl,
     prog,
+    vs,
+    fs,
+    buf,
     loc: {
       uRes: gl.getUniformLocation(prog, 'uRes'),
       uTime: gl.getUniformLocation(prog, 'uTime'),
@@ -536,6 +539,13 @@ export default function IntroHyperspace({ onComplete }) {
     return () => {
       cancelAnimationFrame(rafId)
       window.removeEventListener('resize', onResize)
+      if (glState) {
+        const { gl, prog, vs, fs, buf } = glState
+        gl.deleteBuffer(buf)
+        gl.deleteProgram(prog)
+        gl.deleteShader(vs)
+        gl.deleteShader(fs)
+      }
     }
   }, [onComplete])
 
@@ -601,13 +611,25 @@ export default function IntroHyperspace({ onComplete }) {
         </span>
       </div>
 
-      {/* Bottom Whisper Metadata */}
+      {/* Bottom Whisper Metadata + Optional Quick Skip */}
       <div
-        className={`relative z-20 font-pf-label text-[11px] uppercase tracking-[0.16em] text-white/30 transition-opacity duration-500 ${
-          jumping ? 'opacity-0' : 'opacity-100'
+        className={`relative z-20 w-full max-w-5xl flex items-center justify-between font-pf-label text-[11px] uppercase tracking-[0.16em] text-white/30 transition-opacity duration-500 ${
+          jumping ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}
       >
-        @{PORTFOLIO_DATA.handle}
+        <span>@{PORTFOLIO_DATA.handle}</span>
+        <button
+          type="button"
+          onClick={() => {
+            if (!completedRef.current) {
+              completedRef.current = true
+              if (onComplete) onComplete()
+            }
+          }}
+          className="text-white/35 hover:text-white/80 transition-colors cursor-pointer"
+        >
+          SKIP →
+        </button>
       </div>
     </div>
   )

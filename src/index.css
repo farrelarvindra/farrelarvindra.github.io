@@ -36,6 +36,7 @@
   --font-family--main: 'PP Neue Montreal', 'Neue Montreal', 'Switzer', Arial, sans-serif;
   --font-family--label: 'BB Manual Mono Pro TX', 'Bbmanualmonoprotx', 'IBM Plex Mono', monospace;
   --font-family--wordmark: 'Oswald', 'PP Neue Montreal', 'Switzer', sans-serif;
+  color-scheme: dark;
 }
 
 @layer base {
@@ -47,6 +48,33 @@
     font-weight: 400;
     line-height: 1.25;
     overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.16) #020204;
+  }
+
+  /* Custom sleek darkroom scrollbar for Chromium / WebKit browsers */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #020204;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.32);
+  }
+
+  /* Accessible, understated keyboard focus ring */
+  :focus-visible {
+    outline: 1px solid rgba(255, 255, 255, 0.65);
+    outline-offset: 3px;
   }
 }
 
@@ -75,23 +103,41 @@
   pointer-events: none;
 }
 
-.obsidian-panel {
-  background: rgba(5, 5, 10, 0.76);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+/* Smooth panel & backdrop entrances */
+@keyframes pfFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
-.spectral-hairline {
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 5%,
-    #7c3aed 28%,
-    #06b6d4 46%,
-    #10b981 58%,
-    #f59e0b 72%,
-    #ef4444 86%,
-    transparent 96%
-  );
+@keyframes pfDrawerSlide {
+  from {
+    opacity: 0.4;
+    transform: translate3d(32px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.animate-pf-fade {
+  animation: pfFadeIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-pf-drawer {
+  animation: pfDrawerSlide 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .animate-pf-fade,
+  .animate-pf-drawer {
+    animation: none;
+  }
 }

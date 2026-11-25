@@ -54,22 +54,40 @@ function barycentric3(a, b, c, wa, wb, wc) {
 export default function ActPrism({ onBiasChange }) {
   const sectionRef = useRef(null)
   const canvasRef = useRef(null)
+  const copyRef = useRef(null)
+  const visibleRef = useRef(true)
   const targetBiasRef = useRef(0.28)
   const smoothBiasRef = useRef(0.28)
   const lastReportedDegRef = useRef(28)
   const [activeDiscipline, setActiveDiscipline] = useState(null)
-  const [exitRatio, setExitRatio] = useState(0)
 
-  // Subtle scroll choreography: gently lift & fade hero copy as you descend into the Eclipse
+  // Real-time 0-lag scroll choreography via direct DOM ref (zero React re-renders per scroll)
   useEffect(() => {
     const onScroll = () => {
+      const el = copyRef.current
+      if (!el) return
       const vh = window.innerHeight || 1
       const ratio = Math.max(0, Math.min(1, window.scrollY / (vh * 0.72)))
-      setExitRatio(ratio)
+      el.style.opacity = Math.max(0.08, 1 - ratio * 0.92).toFixed(3)
+      el.style.transform = `translate3d(0, ${(-ratio * 28).toFixed(1)}px, 0)`
     }
     window.addEventListener('scroll', onScroll, { passive: true })
     onScroll()
     return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  // Pause 2D optical canvas when scrolled far offscreen so scrolling stays silky-smooth
+  useEffect(() => {
+    const el = sectionRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return undefined
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        visibleRef.current = entry.isIntersecting
+      },
+      { rootMargin: '220px 0px' },
+    )
+    io.observe(el)
+    return () => io.disconnect()
   }, [])
 
   useEffect(() => {
@@ -87,6 +105,10 @@ export default function ActPrism({ onBiasChange }) {
     window.addEventListener('resize', handleResize)
 
     const render = (t) => {
+      if (!visibleRef.current) {
+        rafId = requestAnimationFrame(render)
+        return
+      }
       if (!sizeState) sizeState = setupHiDPICanvas(canvas)
       if (sizeState) {
         const { w, h, ctx: pCtx } = sizeState
@@ -402,13 +424,10 @@ export default function ActPrism({ onBiasChange }) {
         }}
       />
 
-      {/* Frameless pinkfloyd.com Editorial Composition with smooth scroll-exit fade */}
+      {/* Frameless pinkfloyd.com Editorial Composition with real-time scroll-exit fade */}
       <div
-        className="relative z-20 flex flex-wrap items-end justify-between gap-10 pt-64 pointer-events-none transition-transform duration-150"
-        style={{
-          opacity: Math.max(0.08, 1 - exitRatio * 0.92),
-          transform: `translateY(${(-exitRatio * 28).toFixed(1)}px)`,
-        }}
+        ref={copyRef}
+        className="relative z-20 flex flex-wrap items-end justify-between gap-10 pt-64 pointer-events-none will-change-transform"
       >
         {/* Bottom-Left Positioning Copy */}
         <div className="max-w-lg space-y-3">
@@ -460,11 +479,17 @@ export default function ActPrism({ onBiasChange }) {
               return (
                 <li
                   key={w.nm}
+                  tabIndex={0}
                   onMouseEnter={() => {
                     setActiveDiscipline(w)
                     targetBiasRef.current = w.biasPreset
                   }}
                   onMouseLeave={() => setActiveDiscipline(null)}
+                  onFocus={() => {
+                    setActiveDiscipline(w)
+                    targetBiasRef.current = w.biasPreset
+                  }}
+                  onBlur={() => setActiveDiscipline(null)}
                   className="flex items-center justify-between gap-8 cursor-pointer group py-2"
                 >
                   <span className="flex items-center gap-2.5 font-pf-label text-[11px] uppercase text-white/40 group-hover:text-white transition-colors">

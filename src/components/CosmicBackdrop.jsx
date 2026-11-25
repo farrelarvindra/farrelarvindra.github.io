@@ -50,7 +50,7 @@ export default function CosmicBackdrop() {
       if (!sizeState) sizeState = setupHiDPICanvas(canvas)
       if (sizeState) {
         const { w, h, ctx } = sizeState
-        smoothScroll += (window.scrollY - smoothScroll) * 0.08
+        smoothScroll += (window.scrollY - smoothScroll) * 0.24
 
         ctx.clearRect(0, 0, w, h)
         ctx.fillStyle = '#020204'
