@@ -132,9 +132,10 @@ const FRAG_SRC = `
     vec3 mappedFire = pow(aces(fireLinear), vec3(1.0 / 2.2));
     vec3 moonVoid = vec3(0.00784, 0.00784, 0.01569); // #020204
 
-    // Alpha = 1.0 inside the Moon (occults background stars cleanly), smooth glow alpha outside
+    // Alpha = 1.0 inside the Moon (occults background stars cleanly), tight alpha outside so
+    // surrounding deep-space stars remain crisp and undimmed right up to the fiery glow!
     float glowLum = max(mappedFire.r, max(mappedFire.g, mappedFire.b));
-    float outAlpha = clamp(glowLum * 1.65, 0.0, 1.0);
+    float outAlpha = smoothstep(0.035, 0.62, glowLum);
     float alpha = max(insideMoon, outAlpha);
 
     vec3 finalRgb = mix(mappedFire, max(moonVoid, mappedFire), insideMoon);

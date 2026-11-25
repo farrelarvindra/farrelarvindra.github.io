@@ -1,22 +1,30 @@
 import { useEffect, useRef } from 'react'
 import { setupHiDPICanvas } from '../utils/optics'
 
-// Deterministic deep-space starfield shared continuously behind every Act
-const STARS = Array.from({ length: 185 }, (_, i) => {
+// Deterministic quiet-but-crisp deep-space starfield shared continuously behind every Act
+const STARS = Array.from({ length: 440 }, (_, i) => {
   const warmRoll = (i * 19.37) % 1
   const tint =
     warmRoll > 0.78
-      ? '255, 224, 178' // faint solar ivory-gold
-      : warmRoll > 0.45
-        ? '226, 236, 255' // crisp starlight cool white
-        : '245, 245, 250' // pure pinpoint white
+      ? '255, 228, 184' // warm solar ivory-gold
+      : warmRoll > 0.42
+        ? '226, 238, 255' // crisp starlight cool white
+        : '250, 250, 255' // pure pinpoint white
+
+  const isAnchor = i % 19 === 0
+  const isMedium = i % 5 === 0
   return {
-    x: ((i * 67.31) % 100) / 100,
-    y: ((i * 43.17) % 100) / 100,
-    r: i % 9 === 0 ? 1.15 : i % 3 === 0 ? 0.8 : 0.55,
-    baseAlpha: 0.1 + ((i * 31.7) % 100) * 0.0042,
-    depth: 0.12 + (i % 5) * 0.09, // subtle scroll parallax layer
-    twSpeed: 0.0008 + (i % 4) * 0.00045,
+    x: ((i * 67.31 + (i % 7) * 3.11) % 100) / 100,
+    y: ((i * 43.17 + (i % 11) * 2.37) % 100) / 100,
+    r: isAnchor ? 1.35 : isMedium ? 0.95 : 0.62,
+    baseAlpha: isAnchor
+      ? 0.68 + ((i * 17) % 24) * 0.01
+      : isMedium
+        ? 0.36 + ((i * 23) % 30) * 0.01
+        : 0.18 + ((i * 31) % 28) * 0.01,
+    isAnchor,
+    depth: 0.1 + (i % 5) * 0.085,
+    twSpeed: 0.0007 + (i % 5) * 0.00038,
     twPhase: i * 1.73,
     tint,
   }
@@ -50,11 +58,18 @@ export default function CosmicBackdrop() {
 
         for (const s of STARS) {
           const sx = s.x * w
-          // Wrap vertically with gentle parallax so stars drift smoothly across Act boundaries
           const rawY = (s.y * h - smoothScroll * s.depth) % h
           const sy = rawY < 0 ? rawY + h : rawY
-          const twinkle = 0.68 + 0.32 * Math.sin(t * s.twSpeed + s.twPhase)
-          const alpha = s.baseAlpha * twinkle
+          const twinkle = 0.72 + 0.28 * Math.sin(t * s.twSpeed + s.twPhase)
+          const alpha = Math.min(0.95, s.baseAlpha * twinkle)
+
+          // Whisper-subtle optical bloom only on the sparse brighter anchor stars
+          if (s.isAnchor) {
+            ctx.fillStyle = `rgba(${s.tint}, ${(alpha * 0.22).toFixed(3)})`
+            ctx.beginPath()
+            ctx.arc(sx, sy, s.r * 2.5, 0, Math.PI * 2)
+            ctx.fill()
+          }
 
           ctx.fillStyle = `rgba(${s.tint}, ${alpha.toFixed(3)})`
           ctx.beginPath()
