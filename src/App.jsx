@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import ActPrism from './acts/ActPrism'
 import ActTaste from './acts/ActTaste'
+import ActTotality from './acts/ActTotality'
 import ActWorks from './acts/ActWorks'
 import InterludeBreathe from './acts/InterludeBreathe'
 import IntroHyperspace from './acts/IntroHyperspace'
@@ -52,18 +53,8 @@ export default function App() {
         {/* ACT III: Influences & Taste — Yusuke Nakamura Darkroom Collage + Cursor Spotlight */}
         <ActTaste />
 
-        {/* ACT IV: Staged Finale */}
-        <section
-          id="signal"
-          className="min-h-[30vh] flex flex-col items-center justify-center px-6 text-center"
-        >
-          <span className="font-pf-label text-[11px] uppercase text-white/30">
-            ACT IV · STAGED FINALE
-          </span>
-          <p className="font-pf-main text-lg md:text-xl uppercase text-white/45 mt-2">
-            Totality Convergence, Signal Links &amp; Fading Heartbeat
-          </p>
-        </section>
+        {/* ACT IV: Totality Convergence, Contact Signal & Fading Heartbeat */}
+        <ActTotality onReplayIntro={handleReplayIntro} />
       </main>
     </div>
   )

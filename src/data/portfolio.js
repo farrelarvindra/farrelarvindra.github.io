@@ -290,9 +290,19 @@ export const PORTFOLIO_DATA = {
       isPlaceholder: true,
     },
   ],
+  actFour: {
+    eyebrow: 'ECLIPSE · TOTALITY',
+    quote: 'And everything under the sun is in tune, but the sun is eclipsed by the moon.',
+    quoteSource: 'Eclipse · 1973',
+    heading: 'Send a Signal',
+    status: 'OPEN TO COLLABORATION · INDONESIA (WIB)',
+    whisper: 'There is no dark side of the moon, really. Matter of fact, it’s all dark.',
+  },
   socials: {
     github: 'https://github.com/farrelarvindra',
-    email: 'hello@example.com',
-    linkedin: 'https://linkedin.com',
+    email: 'farrel.arvindra@gmail.com',
+    linkedin: 'https://www.linkedin.com/in/maulana-farrel-arvindra/',
+    instagram: 'https://www.instagram.com/maul.arv/',
+    instagramHandle: '@maul.arv',
   },
 }
