@@ -10,7 +10,7 @@ const NAV_ITEMS = [
   { id: 'signal', label: 'Signal' },
 ]
 
-export default function SpectrumHUD({ biasAngle = 28 }) {
+export default function SpectrumHUD({ biasAngle = 28, onReplayIntro }) {
   const [scrollProgress, setScrollProgress] = useState(0)
   const [activeId, setActiveId] = useState('refraction')
 
@@ -105,6 +105,15 @@ export default function SpectrumHUD({ biasAngle = 28 }) {
               </a>
             )
           })}
+          {onReplayIntro && (
+            <button
+              type="button"
+              onClick={onReplayIntro}
+              className="font-pf-label text-[11px] uppercase text-white/40 hover:text-white transition-colors cursor-pointer border-l border-white/10 pl-6"
+            >
+              INTRO
+            </button>
+          )}
           <a
             href={PORTFOLIO_DATA.socials.github}
             target="_blank"

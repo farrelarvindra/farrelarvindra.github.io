@@ -1,18 +1,34 @@
 import { useCallback, useState } from 'react'
 import ActPrism from './acts/ActPrism'
+import ActWorks from './acts/ActWorks'
 import InterludeBreathe from './acts/InterludeBreathe'
+import IntroHyperspace from './acts/IntroHyperspace'
 import CosmicBackdrop from './components/CosmicBackdrop'
 import SpectrumHUD from './components/SpectrumHUD'
 
 export default function App() {
+  const [entered, setEntered] = useState(false)
   const [biasAngle, setBiasAngle] = useState(28)
 
   const handleBiasChange = useCallback((deg) => {
     setBiasAngle(deg)
   }, [])
 
+  const handleIntroComplete = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' })
+    setEntered(true)
+  }, [])
+
+  const handleReplayIntro = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' })
+    setEntered(false)
+  }, [])
+
   return (
     <div className="relative min-h-screen bg-[#020204] text-slate-100">
+      {/* Opening pinkfloyd.com-style ENTER splash with Star Wars hyperspace jump -> blank reveal */}
+      {!entered && <IntroHyperspace onComplete={handleIntroComplete} />}
+
       {/* Shared persistent deep-space starfield running seamlessly behind every Act */}
       <CosmicBackdrop />
 
@@ -20,31 +36,22 @@ export default function App() {
       <div className="dark-grain fixed inset-0 z-50" aria-hidden="true" />
 
       {/* Persistent pinkfloyd.com-inspired header & active chapter indicator */}
-      <SpectrumHUD biasAngle={biasAngle} />
+      {entered && <SpectrumHUD biasAngle={biasAngle} onReplayIntro={handleReplayIntro} />}
 
       <main className="relative z-10">
         {/* ACT I: 3D Glass Tetrahedron & Light Bias */}
         <ActPrism onBiasChange={handleBiasChange} />
 
-        {/* INTERLUDE: "Breathe (In the Air)" Quote + Live Solar Eclipse (Seamless, zero divider bar) */}
+        {/* INTERLUDE: "Breathe (In the Air)" Quote + Live Solar Eclipse */}
         <InterludeBreathe />
 
-        {/* Upcoming Acts staged cleanly in the same continuous void */}
-        <section
-          id="works"
-          className="min-h-[42vh] flex flex-col items-center justify-center px-6 text-center"
-        >
-          <span className="font-pf-label text-[11px] uppercase text-white/35">
-            ACT II · STAGED NEXT
-          </span>
-          <p className="font-pf-main text-xl md:text-2xl uppercase text-white/65 mt-2">
-            Life-Flash Perspective Vortex &amp; Full GitHub Repository Index
-          </p>
-        </section>
+        {/* SELECTED WORKS & ALL GITHUB REPOSITORIES ARCHIVE */}
+        <ActWorks />
 
+        {/* ACT III: Reserved Modular Slot for Custom Drawing Installation */}
         <section
           id="canvas"
-          className="min-h-[30vh] flex flex-col items-center justify-center px-6 text-center"
+          className="min-h-[34vh] flex flex-col items-center justify-center px-6 text-center"
         >
           <span className="font-pf-label text-[11px] uppercase text-white/30">
             ACT III · RESERVED SLOT
@@ -54,6 +61,7 @@ export default function App() {
           </p>
         </section>
 
+        {/* ACT IV: Staged Finale */}
         <section
           id="signal"
           className="min-h-[30vh] flex flex-col items-center justify-center px-6 text-center"
