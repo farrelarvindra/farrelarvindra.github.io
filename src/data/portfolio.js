@@ -297,6 +297,7 @@ export const PORTFOLIO_DATA = {
     heading: 'Send a Signal',
     status: 'OPEN TO COLLABORATION · INDONESIA (WIB)',
     whisper: 'There is no dark side of the moon, really. Matter of fact, it’s all dark.',
+    portrait: './art/portrait.jpg',
   },
   socials: {
     github: 'https://github.com/farrelarvindra',

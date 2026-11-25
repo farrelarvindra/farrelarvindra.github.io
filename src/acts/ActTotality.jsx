@@ -450,7 +450,7 @@ export default function ActTotality({ onReplayIntro }) {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const { eyebrow, quote, quoteSource, heading, status, whisper } = PORTFOLIO_DATA.actFour
+  const { eyebrow, quote, quoteSource, heading, status, whisper, portrait } = PORTFOLIO_DATA.actFour
   const { email, github, linkedin, instagram, instagramHandle } = PORTFOLIO_DATA.socials
 
   const channels = [
@@ -554,7 +554,7 @@ export default function ActTotality({ onReplayIntro }) {
       {/* =========================================================
           UPPER CHAPTER: ECLIPSE LYRIC & FRAMELESS CONTACT INDEX
           ========================================================= */}
-      <div className="relative z-10 max-w-4xl w-full mx-auto px-6 md:px-11 space-y-14 pt-12">
+      <div className="relative z-10 max-w-5xl w-full mx-auto px-6 md:px-11 space-y-14 pt-12">
         {/* Closing Eclipse Quote */}
         <div className="text-center space-y-4 max-w-2xl mx-auto">
           <div className="font-pf-label text-[11px] uppercase text-white/45">
@@ -570,77 +570,108 @@ export default function ActTotality({ onReplayIntro }) {
           </div>
         </div>
 
-        {/* Signal Header + Live Availability & WIB Time */}
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/[0.12] pb-4">
-            <h2 className="font-pf-main font-normal text-2xl sm:text-4xl uppercase leading-none text-white/95">
-              {heading}
-            </h2>
+        {/* Signal Contact Index + Low-Opacity Feathered Darkroom Portrait */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+          {/* Left: Signal Header + 4-Channel Contact Index */}
+          <div className="lg:col-span-8 space-y-2">
+            <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/[0.12] pb-4">
+              <h2 className="font-pf-main font-normal text-2xl sm:text-4xl uppercase leading-none text-white/95">
+                {heading}
+              </h2>
 
-            <div className="flex flex-wrap items-center gap-4 font-pf-label text-[10.5px] uppercase text-white/50">
-              <span className="inline-flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
-                {status}
-              </span>
-              <span className="tabular-nums text-white/35">{wibTime} WIB</span>
+              <div className="flex flex-wrap items-center gap-4 font-pf-label text-[10.5px] uppercase text-white/50">
+                <span className="inline-flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
+                  {status}
+                </span>
+                <span className="tabular-nums text-white/35">{wibTime} WIB</span>
+              </div>
             </div>
-          </div>
 
-          {/* Frameless 4-Channel Contact Index */}
-          <ul className="divide-y divide-white/[0.08]">
-            {channels.map((ch) => {
-              const isHovered = hoveredChannel === ch.id
-              return (
-                <li
-                  key={ch.id}
-                  onMouseEnter={() => setHoveredChannel(ch.id)}
-                  onMouseLeave={() => setHoveredChannel(null)}
-                  className="py-4 sm:py-5 flex flex-wrap items-center justify-between gap-4 group transition-colors"
-                >
-                  <div className="flex items-center gap-4 sm:gap-6 min-w-0">
-                    <span
-                      className="font-pf-label text-[11px] tabular-nums transition-colors"
-                      style={{ color: isHovered ? ch.accent : 'rgba(255, 255, 255, 0.32)' }}
-                    >
-                      {ch.num}
-                    </span>
+            {/* Frameless 4-Channel Contact Index */}
+            <ul className="divide-y divide-white/[0.08]">
+              {channels.map((ch) => {
+                const isHovered = hoveredChannel === ch.id
+                return (
+                  <li
+                    key={ch.id}
+                    onMouseEnter={() => setHoveredChannel(ch.id)}
+                    onMouseLeave={() => setHoveredChannel(null)}
+                    className="py-4 sm:py-5 flex flex-wrap items-center justify-between gap-4 group transition-colors"
+                  >
+                    <div className="flex items-center gap-4 sm:gap-6 min-w-0">
+                      <span
+                        className="font-pf-label text-[11px] tabular-nums transition-colors"
+                        style={{ color: isHovered ? ch.accent : 'rgba(255, 255, 255, 0.32)' }}
+                      >
+                        {ch.num}
+                      </span>
 
-                    <div className="min-w-0">
-                      <div className="font-pf-label text-[10px] uppercase text-white/40">
-                        {ch.label}
-                      </div>
-                      <div className="font-pf-main text-base sm:text-xl text-white/85 group-hover:text-white transition-colors truncate">
-                        {ch.value}
+                      <div className="min-w-0">
+                        <div className="font-pf-label text-[10px] uppercase text-white/40">
+                          {ch.label}
+                        </div>
+                        <div className="font-pf-main text-base sm:text-xl text-white/85 group-hover:text-white transition-colors truncate">
+                          {ch.value}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Right-side minimal mono actions */}
-                  <div className="flex items-center gap-4 font-pf-label text-[11px] uppercase">
-                    {ch.isEmail && (
-                      <button
-                        type="button"
-                        onClick={handleCopyEmail}
-                        className="px-3 py-1.5 border border-white/15 hover:border-white/55 text-white/75 hover:text-white transition-colors cursor-pointer"
+                    {/* Right-side minimal mono actions */}
+                    <div className="flex items-center gap-4 font-pf-label text-[11px] uppercase">
+                      {ch.isEmail && (
+                        <button
+                          type="button"
+                          onClick={handleCopyEmail}
+                          className="px-3 py-1.5 border border-white/15 hover:border-white/55 text-white/75 hover:text-white transition-colors cursor-pointer"
+                        >
+                          {copied ? 'COPIED ✓' : 'COPY EMAIL'}
+                        </button>
+                      )}
+
+                      <a
+                        href={ch.href}
+                        target={ch.isEmail ? undefined : '_blank'}
+                        rel={ch.isEmail ? undefined : 'noreferrer'}
+                        className="inline-flex items-center gap-1.5 text-white/60 hover:text-white transition-colors py-1"
                       >
-                        {copied ? 'COPIED ✓' : 'COPY EMAIL'}
-                      </button>
-                    )}
+                        <span>{ch.isEmail ? 'SEND MAIL' : 'OPEN'}</span>
+                        <span className="transition-transform group-hover:translate-x-0.5">→</span>
+                      </a>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
 
-                    <a
-                      href={ch.href}
-                      target={ch.isEmail ? undefined : '_blank'}
-                      rel={ch.isEmail ? undefined : 'noreferrer'}
-                      className="inline-flex items-center gap-1.5 text-white/60 hover:text-white transition-colors py-1"
-                    >
-                      <span>{ch.isEmail ? 'SEND MAIL' : 'OPEN'}</span>
-                      <span className="transition-transform group-hover:translate-x-0.5">→</span>
-                    </a>
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
+          {/* Right: Frameless Low-Opacity Cutout Portrait — pitch-black backdrop vanishes via mix-blend-lighten */}
+          {portrait && (
+            <div className="lg:col-span-4 flex justify-center lg:justify-end">
+              <figure className="group relative w-60 sm:w-64 lg:w-full max-w-[300px] aspect-[3/4] select-none mix-blend-lighten">
+                <div
+                  className="relative w-full h-full overflow-hidden transition-opacity duration-700 opacity-[0.34] group-hover:opacity-[0.65]"
+                  style={{
+                    maskImage:
+                      'linear-gradient(to bottom, black 0%, black 62%, transparent 100%)',
+                    WebkitMaskImage:
+                      'linear-gradient(to bottom, black 0%, black 62%, transparent 100%)',
+                  }}
+                >
+                  <img
+                    src={portrait}
+                    alt={PORTFOLIO_DATA.name}
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-[1.03]"
+                    style={{
+                      filter: 'grayscale(100%) contrast(1.12) brightness(0.95)',
+                    }}
+                  />
+                </div>
+              </figure>
+            </div>
+          )}
         </div>
       </div>
 
