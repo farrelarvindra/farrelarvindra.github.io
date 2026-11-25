@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import ActPrism from './acts/ActPrism'
+import ActTaste from './acts/ActTaste'
 import ActWorks from './acts/ActWorks'
 import InterludeBreathe from './acts/InterludeBreathe'
 import IntroHyperspace from './acts/IntroHyperspace'
@@ -48,18 +49,8 @@ export default function App() {
         {/* SELECTED WORKS & ALL GITHUB REPOSITORIES ARCHIVE */}
         <ActWorks />
 
-        {/* ACT III: Reserved Modular Slot for Custom Drawing Installation */}
-        <section
-          id="canvas"
-          className="min-h-[34vh] flex flex-col items-center justify-center px-6 text-center"
-        >
-          <span className="font-pf-label text-[11px] uppercase text-white/30">
-            ACT III · RESERVED SLOT
-          </span>
-          <p className="font-pf-main text-lg md:text-xl uppercase text-white/45 mt-2">
-            Reserved for upcoming custom drawing installation
-          </p>
-        </section>
+        {/* ACT III: Influences & Taste — Yusuke Nakamura Darkroom Collage + Cursor Spotlight */}
+        <ActTaste />
 
         {/* ACT IV: Staged Finale */}
         <section

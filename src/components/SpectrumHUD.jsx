@@ -6,7 +6,7 @@ const NAV_ITEMS = [
   { id: 'refraction', label: 'Refraction' },
   { id: 'breathe', label: 'Eclipse' },
   { id: 'works', label: 'Works' },
-  { id: 'canvas', label: 'Canvas' },
+  { id: 'canvas', label: 'Taste' },
   { id: 'signal', label: 'Signal' },
 ]
 
