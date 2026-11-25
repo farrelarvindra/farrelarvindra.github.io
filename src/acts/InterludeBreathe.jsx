@@ -8,15 +8,15 @@ const VERT_SRC = `
   }
 `
 
-// Photorealistic Total Eclipse + Diamond-Ring Solar Burst Shader with transparent void alpha:
-// Inside the Moon disc -> opaque #020204 (genuinely occulting the shared CosmicBackdrop stars!)
-// Outside the Moon disc -> smooth optical alpha so the exact same continuous starfield surrounds the Eclipse!
+// Interactive Photorealistic Eclipse Shader:
+// Moving the Moon in any 2D direction (uMoonOffset) physically shifts the exposed solar limb,
+// diamond-ring flare, asymmetric coronal intensity, inner-moon copper lens bleed, and star occultation.
 const FRAG_SRC = `
   precision highp float;
 
   uniform vec2 uRes;
   uniform float uTime;
-  uniform float uBurstAngle;
+  uniform vec2 uMoonOffset;
 
   float hash31(vec3 p) {
     p = fract(p * 0.1031);
@@ -55,12 +55,12 @@ const FRAG_SRC = `
   }
 
   vec3 solarRamp(float h) {
-    float x = clamp(h, 0.0, 1.6);
+    float x = clamp(h, 0.0, 1.65);
     vec3 col = mix(vec3(0.0), vec3(0.48, 0.05, 0.005), smoothstep(0.0, 0.10, x));
     col = mix(col, vec3(0.96, 0.24, 0.01), smoothstep(0.10, 0.30, x));
     col = mix(col, vec3(1.00, 0.58, 0.03), smoothstep(0.30, 0.58, x));
     col = mix(col, vec3(1.00, 0.90, 0.24), smoothstep(0.58, 0.92, x));
-    col = mix(col, vec3(1.00, 0.99, 0.86), smoothstep(0.92, 1.40, x));
+    col = mix(col, vec3(1.00, 0.99, 0.86), smoothstep(0.92, 1.42, x));
     return col;
   }
 
@@ -74,66 +74,97 @@ const FRAG_SRC = `
     vec2 p = uv - sunCenter;
 
     float sunR = 0.205;
-    float r = length(p);
-    vec2 dir = p / max(r, 1e-4);
-    float dRim = r - sunR;
+    float moonR = 0.204;
 
-    // 1. RAZOR-THIN GOLDEN-ORANGE LIMB RING (bright left/right arcs, smoldering top/bottom poles)
-    float arcWeight = 0.14 + 0.86 * pow(abs(dir.x), 1.45);
+    float rSun = length(p);
+    vec2 dir = p / max(rSun, 1e-4);
+    float dSunRim = rSun - sunR;
+
+    // Movable Moon position in all 2D directions relative to the Sun
+    vec2 pMoon = p - uMoonOffset;
+    float rMoon = length(pMoon);
+    float dMoonRim = rMoon - moonR;
+
+    float offLen = length(uMoonOffset);
+    // Direction where the Sun is most exposed (opposite to where the Moon shifted)
+    vec2 burstDir = (offLen > 0.0005) ? normalize(-uMoonOffset) : vec2(0.965, -0.26);
+    float offsetFactor = smoothstep(0.001, 0.022, offLen);
+
+    // 1. DYNAMIC CORONAL RING AROUND THE SUN (adapts organically from pure 360° totality to asymmetric crescent)
+    float totalityArc = 0.42 + 0.58 * pow(abs(dir.x), 1.25);
+    float exposedSide = 0.5 + 0.5 * dot(dir, burstDir);
+    float asymArc = 0.12 + 0.88 * pow(exposedSide, 1.45);
+    float arcWeight = mix(totalityArc, asymArc, offsetFactor);
+
     float gran = 0.84 + 0.32 * fbm(vec3(dir * 16.0, uTime * 0.2));
-    float pips = pow(fbm(vec3(dir * 34.0, r * 24.0 - uTime * 0.32)), 3.4);
+    float pips = pow(fbm(vec3(dir * 34.0, rSun * 24.0 - uTime * 0.32)), 3.4);
     float pipExtend = pips * 0.009 * (0.4 + 0.6 * arcWeight);
 
-    float innerEdge = smoothstep(-0.0024, 0.0004, dRim);
-    float dOuter = max(dRim - pipExtend, 0.0);
+    // Opaque Moon mask: 0 inside Moon, 1 outside Moon
+    float moonOutside = smoothstep(-0.0022, 0.0012, dMoonRim);
+    float insideMoon = 1.0 - moonOutside;
 
-    float ringCore = exp(-dOuter * 175.0) * 1.32 * arcWeight * gran;
-    float ringFire = exp(-dOuter * 48.0) * 0.52 * (0.28 + 0.72 * arcWeight) * (0.8 + 0.4 * pips);
-    float ringAmbient = exp(-abs(dRim) * 14.0) * 0.085 * (0.35 + 0.65 * arcWeight);
+    // True geometric solar photosphere exposed when Moon shifts off-center
+    float sunInside = smoothstep(sunR + 0.0028, sunR - 0.0022, rSun);
+    float exposedCrescent = sunInside * moonOutside;
 
+    // Tight fiery solar corona hugging the Sun's limb outside the Moon
+    float dOuter = max(dSunRim - pipExtend, 0.0);
+    float ringCore = exp(-dOuter * 168.0) * 1.32 * arcWeight * gran;
+    float ringFire = exp(-dOuter * 46.0) * 0.54 * (0.28 + 0.72 * arcWeight) * (0.8 + 0.4 * pips);
+    float ringAmbient = exp(-abs(dSunRim) * 13.5) * 0.09 * (0.35 + 0.65 * arcWeight);
+
+    // Tiny localized chromosphere prominence tuft on the limb
     float topPipMask = pow(max(0.0, dot(dir, normalize(vec2(0.28, 0.96)))), 48.0);
-    float topPip = exp(-max(dRim, 0.0) * 55.0) * innerEdge * topPipMask * (0.45 + 0.55 * pips) * 0.65;
+    float topPip = exp(-max(dSunRim, 0.0) * 55.0) * topPipMask * (0.45 + 0.55 * pips) * 0.62;
 
-    float rimHeat = (ringCore + ringFire + topPip) * innerEdge + ringAmbient * smoothstep(-0.03, 0.0, dRim);
+    float rimHeat = (ringCore + ringFire + topPip + exposedCrescent * 2.4) * moonOutside
+                  + ringAmbient * smoothstep(-0.025, 0.005, dMoonRim);
 
-    // 2. SINGULAR BLAZING LOWER-RIGHT SOLAR FLARE (~4 o'clock)
-    vec2 burstDir = vec2(cos(uBurstAngle), sin(uBurstAngle));
+    // 2. DYNAMIC DIAMOND-RING SOLAR BURST TRACKING THE EXPOSED LIMB IN ALL 360°
     vec2 burstPos = burstDir * sunR;
     vec2 dp = p - burstPos;
     float dBurst = length(dp);
 
-    vec2 burstLocal = vec2(dp.x * 1.12, dp.y * 0.84);
+    // Slightly elongated plasma contour tangent to the solar limb
+    vec2 tang = vec2(-burstDir.y, burstDir.x);
+    vec2 burstLocal = vec2(dot(dp, burstDir) * 1.16, dot(dp, tang) * 0.82);
     float flameWarp = (fbm(vec3(dp * 28.0, uTime * 0.38)) - 0.48) * 0.016;
     float dWarped = max(0.0, length(burstLocal) + flameWarp * smoothstep(0.004, 0.06, dBurst));
 
-    float flareCore = exp(-dWarped * 48.0) * 2.55;
-    float flareOrange = exp(-dWarped * 18.5) * 0.92;
-    float flareHaze = exp(-dBurst * 6.8) * 0.24;
+    // Scales smoothly from quiet totality (offLen ~ 0) up to blazing diamond-ring & crescent glare
+    float burstIntensity = smoothstep(0.0008, 0.011, offLen) * (0.85 + 0.65 * smoothstep(0.011, 0.045, offLen));
 
-    float burstCone = pow(max(0.0, dot(dir, burstDir)), 12.0);
-    float burstTongues = exp(-max(dRim, 0.0) * 22.0) * innerEdge * burstCone * pow(fbm(vec3(dir * 22.0, r * 14.0 - uTime * 0.42)), 1.6) * 1.15;
+    float flareCore = exp(-dWarped * 44.0) * 2.45 * burstIntensity;
+    float flareOrange = exp(-dWarped * 16.5) * 0.92 * burstIntensity;
+    float flareHaze = exp(-dBurst * 6.4) * 0.25 * burstIntensity;
 
-    float totalHeat = rimHeat + flareCore + flareOrange + burstTongues;
+    // Subtle fiery flame tongues licking outward from the exposed side
+    float burstCone = pow(max(0.0, dot(dir, burstDir)), 10.0);
+    float burstTongues = exp(-max(dSunRim, 0.0) * 20.0) * moonOutside * burstCone
+                       * pow(fbm(vec3(dir * 22.0, rSun * 14.0 - uTime * 0.42)), 1.6) * 1.15 * burstIntensity;
+
+    // Let peak diamond-ring optical bloom spill slightly in front of the lunar edge for photographic realism
+    float flareBleedMask = 0.32 + 0.68 * moonOutside;
+    float totalHeat = rimHeat + (flareCore + flareOrange) * flareBleedMask + burstTongues;
+
     vec3 fireLinear = solarRamp(totalHeat) * totalHeat * 1.25
                     + vec3(0.75, 0.14, 0.015) * flareHaze;
 
-    // Whisper-subtle chromatic lens fringe on the outer edge of the 4 o'clock burst
-    // (visually echoes Act I's optical prism lens without losing the pure solar fire palette)
-    float fringe = exp(-abs(dBurst - 0.095) * 32.0) * 0.065;
+    // Whisper-subtle chromatic lens fringe echoing Act I's optics
+    float fringe = exp(-abs(dBurst - 0.095) * 32.0) * 0.065 * burstIntensity;
     fireLinear += vec3(0.05, 0.42, 0.85) * fringe;
 
-    // 3. INNER-MOON OPTICAL LIGHT BLEED (Warm copper scatter on right edge inside the opaque dark Moon)
-    float insideMoon = 1.0 - smoothstep(sunR - 0.003, sunR + 0.001, r);
-    if (r < sunR) {
-      float innerScatter = exp(-dBurst * 6.5) * smoothstep(sunR * 0.15, sunR, r);
-      fireLinear += vec3(0.58, 0.13, 0.012) * innerScatter * 0.34;
+    // 3. DYNAMIC INNER-MOON WARM COPPER LENS BLEED (shifts with Moon direction!)
+    if (rMoon < moonR) {
+      float innerScatter = exp(-dBurst * 6.2) * smoothstep(moonR * 0.12, moonR, rMoon);
+      fireLinear += vec3(0.62, 0.14, 0.012) * innerScatter * 0.38 * (0.25 + 0.75 * burstIntensity);
     }
 
     vec3 mappedFire = pow(aces(fireLinear), vec3(1.0 / 2.2));
     vec3 moonVoid = vec3(0.00784, 0.00784, 0.01569); // #020204
 
-    // Alpha = 1.0 inside the Moon (occults background stars cleanly), tight alpha outside so
-    // surrounding deep-space stars remain crisp and undimmed right up to the fiery glow!
+    // Opaque Moon occults CosmicBackdrop stars cleanly as it moves; tight alpha outside preserves stars
     float glowLum = max(mappedFire.r, max(mappedFire.g, mappedFire.b));
     float outAlpha = smoothstep(0.035, 0.62, glowLum);
     float alpha = max(insideMoon, outAlpha);
@@ -189,15 +220,26 @@ function initEclipseGL(canvas) {
     prog,
     uRes: gl.getUniformLocation(prog, 'uRes'),
     uTime: gl.getUniformLocation(prog, 'uTime'),
-    uBurstAngle: gl.getUniformLocation(prog, 'uBurstAngle'),
+    uMoonOffset: gl.getUniformLocation(prog, 'uMoonOffset'),
   }
 }
+
+// Resting state: Moon centered cleanly over the Sun (totality); moves only when pointer is around the Moon
+const CENTER_MOON_OFFSET = { x: 0, y: 0 }
+const MAX_HOVER_OFFSET = 0.036
+const MAX_DRAG_OFFSET = 0.056
+// Proximity zone around the Moon (~1.5x the 0.205 visual radius)
+const MOON_ZONE_RADIUS_FACTOR = 0.31
 
 export default function InterludeBreathe() {
   const sectionRef = useRef(null)
   const canvasRef = useRef(null)
-  const targetAngleRef = useRef(-0.24)
-  const smoothAngleRef = useRef(-0.24)
+
+  const targetOffsetRef = useRef({ ...CENTER_MOON_OFFSET })
+  const smoothOffsetRef = useRef({ ...CENTER_MOON_OFFSET })
+  const draggingRef = useRef(false)
+  const [nearMoon, setNearMoon] = useState(false)
+  const [dragging, setDragging] = useState(false)
   const [revealProgress, setRevealProgress] = useState(0)
 
   useEffect(() => {
@@ -207,10 +249,6 @@ export default function InterludeBreathe() {
       const rect = el.getBoundingClientRect()
       const vh = window.innerHeight || 1
       const progress = (vh * 0.5 - (rect.top + rect.height * 0.5)) / vh
-
-      targetAngleRef.current = -0.24 - Math.max(-0.5, Math.min(0.5, progress)) * 0.24
-
-      // Smooth cinematic reveal: peaks at 1.0 when section is centered in viewport
       const visibility = 1 - Math.min(1, Math.abs(progress) * 1.35)
       setRevealProgress(Math.max(0, visibility))
     }
@@ -232,7 +270,7 @@ export default function InterludeBreathe() {
     const state = initEclipseGL(canvas)
     if (!state) return undefined
 
-    const { gl, prog, uRes, uTime, uBurstAngle } = state
+    const { gl, prog, uRes, uTime, uMoonOffset } = state
     let rafId = 0
 
     const render = (ts) => {
@@ -248,13 +286,21 @@ export default function InterludeBreathe() {
       gl.clearColor(0, 0, 0, 0)
       gl.clear(gl.COLOR_BUFFER_BIT)
 
-      smoothAngleRef.current += (targetAngleRef.current - smoothAngleRef.current) * 0.05
-      const subtleDrift = Math.sin(ts * 0.0005) * 0.02
+      // Smooth orbital ease toward target 2D moon offset + subtle living breath
+      smoothOffsetRef.current.x += (targetOffsetRef.current.x - smoothOffsetRef.current.x) * 0.075
+      smoothOffsetRef.current.y += (targetOffsetRef.current.y - smoothOffsetRef.current.y) * 0.075
+
+      const driftX = Math.sin(ts * 0.00055) * 0.0012
+      const driftY = Math.cos(ts * 0.00045) * 0.0012
 
       gl.useProgram(prog)
       gl.uniform2f(uRes, w, h)
       gl.uniform1f(uTime, ts * 0.001)
-      gl.uniform1f(uBurstAngle, smoothAngleRef.current + subtleDrift)
+      gl.uniform2f(
+        uMoonOffset,
+        smoothOffsetRef.current.x + driftX,
+        smoothOffsetRef.current.y + driftY,
+      )
       gl.drawArrays(gl.TRIANGLES, 0, 6)
 
       rafId = requestAnimationFrame(render)
@@ -264,6 +310,75 @@ export default function InterludeBreathe() {
     return () => cancelAnimationFrame(rafId)
   }, [])
 
+  // Only move the Moon when the pointer is within the proximity zone around the Moon (or actively dragging it);
+  // otherwise smoothly recenter the Moon over the Sun.
+  const getPointerMoonMetrics = (clientX, clientY) => {
+    const el = sectionRef.current
+    if (!el) return null
+    const rect = el.getBoundingClientRect()
+    const moonCx = rect.left + rect.width * 0.5
+    const moonCy = rect.top + rect.height * 0.445
+    const zoneR = rect.height * MOON_ZONE_RADIUS_FACTOR
+
+    const px = clientX - moonCx
+    const py = -(clientY - moonCy) // Flip Y for WebGL upward +Y
+    const distPx = Math.hypot(px, py)
+    return {
+      dx: px / zoneR,
+      dy: py / zoneR,
+      distNorm: distPx / zoneR,
+      insideZone: distPx <= zoneR,
+    }
+  }
+
+  const applyMoonOffset = (metrics, isDrag) => {
+    const maxR = isDrag ? MAX_DRAG_OFFSET : MAX_HOVER_OFFSET
+    const clampedDist = Math.min(1, metrics.distNorm) * maxR
+    const scale = metrics.distNorm > 1e-4 ? clampedDist / metrics.distNorm : 0
+    targetOffsetRef.current = {
+      x: metrics.dx * scale,
+      y: metrics.dy * scale,
+    }
+  }
+
+  const handlePointerMove = (e) => {
+    const m = getPointerMoonMetrics(e.clientX, e.clientY)
+    if (!m) return
+
+    setNearMoon(m.insideZone)
+    if (draggingRef.current || m.insideZone) {
+      applyMoonOffset(m, draggingRef.current)
+    } else {
+      targetOffsetRef.current = { ...CENTER_MOON_OFFSET }
+    }
+  }
+
+  const handlePointerDown = (e) => {
+    const m = getPointerMoonMetrics(e.clientX, e.clientY)
+    if (!m || !m.insideZone) return
+    draggingRef.current = true
+    setDragging(true)
+    applyMoonOffset(m, true)
+  }
+
+  const handlePointerUp = (e) => {
+    if (!draggingRef.current) return
+    draggingRef.current = false
+    setDragging(false)
+    const m = getPointerMoonMetrics(e.clientX, e.clientY)
+    if (!m || !m.insideZone) {
+      setNearMoon(false)
+      targetOffsetRef.current = { ...CENTER_MOON_OFFSET }
+    }
+  }
+
+  const handlePointerLeave = () => {
+    draggingRef.current = false
+    setDragging(false)
+    setNearMoon(false)
+    targetOffsetRef.current = { ...CENTER_MOON_OFFSET }
+  }
+
   const { quote, source } = PORTFOLIO_DATA.breatheInterlude
 
   return (
@@ -271,7 +386,13 @@ export default function InterludeBreathe() {
       ref={sectionRef}
       id="breathe"
       aria-label="Breathe Eclipse Interlude"
-      className="relative min-h-[100svh] w-full flex flex-col items-center justify-end px-6 pb-16 md:pb-24 overflow-hidden"
+      onPointerMove={handlePointerMove}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={handlePointerLeave}
+      className={`relative min-h-[100svh] w-full flex flex-col items-center justify-end px-6 pb-16 md:pb-24 overflow-hidden select-none ${
+        dragging ? 'cursor-grabbing' : nearMoon ? 'cursor-grab' : 'cursor-default'
+      }`}
     >
       {/* Delicate top thread continuing smoothly from Act I */}
       <div
@@ -283,7 +404,7 @@ export default function InterludeBreathe() {
         }}
       />
 
-      {/* Transparent-Void Solar Eclipse Canvas (Moon occults the shared CosmicBackdrop stars!) */}
+      {/* Transparent-Void Interactive Solar Eclipse Canvas */}
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full z-0 pointer-events-none"
@@ -297,7 +418,7 @@ export default function InterludeBreathe() {
 
       {/* Scroll-Choreographed Quote & Attribution */}
       <figure
-        className="relative z-10 max-w-2xl mx-auto text-center space-y-3.5 pt-96 transition-transform duration-150"
+        className="relative z-10 max-w-2xl mx-auto text-center space-y-3.5 pt-96 pointer-events-none transition-transform duration-150"
         style={{
           opacity: 0.18 + revealProgress * 0.82,
           transform: `translateY(${((1 - revealProgress) * 18).toFixed(1)}px)`,
@@ -309,9 +430,12 @@ export default function InterludeBreathe() {
         <figcaption className="font-pf-label text-[11px] sm:text-[12px] uppercase text-white/45 tracking-[0.14em]">
           &mdash; &ldquo;{source}&rdquo;
         </figcaption>
+        <p className="font-pf-label text-[10px] uppercase text-white/25 tracking-[0.18em] pt-2">
+          MOVE OR DRAG TO SHIFT THE MOON
+        </p>
       </figure>
 
-      {/* Delicate bottom thread leading into Act II */}
+      {/* Delicate bottom thread leading into Works */}
       <div
         aria-hidden="true"
         className="absolute bottom-0 left-1/2 -translate-x-1/2 w-px h-14 z-10 pointer-events-none"
