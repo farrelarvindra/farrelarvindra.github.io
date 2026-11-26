@@ -92,21 +92,14 @@ function TasteTile({ item, accent, isPortraitArt, isHovered, isDimmed, onEnter, 
         </span>
       </div>
 
-      {/* Bottom Title + Meta + Hover Note */}
+      {/* Bottom Release Year + Title (clean & consistent across all 9 tiles) */}
       <div className="absolute inset-x-0 bottom-0 p-2.5 sm:p-3.5 flex flex-col justify-end">
-        <div className="font-pf-label text-[8.5px] sm:text-[9.5px] uppercase text-white/45 tracking-[0.05em] truncate">
-          {item.meta}
+        <div className="font-pf-label text-[9px] sm:text-[10px] uppercase tabular-nums text-white/55 tracking-[0.06em]">
+          {item.year}
         </div>
-        <h3 className="font-pf-main font-medium text-xs sm:text-[15px] uppercase leading-tight text-white/88 group-hover:text-white mt-0.5 truncate transition-colors">
+        <h3 className="font-pf-main font-medium text-xs sm:text-[15px] uppercase leading-tight text-white/90 group-hover:text-white mt-0.5 truncate transition-colors">
           {item.title}
         </h3>
-        <p
-          className={`font-pf-main text-[11px] text-white/75 leading-[1.35] overflow-hidden transition-all duration-300 ${
-            isHovered ? 'max-h-16 opacity-100 mt-1.5' : 'max-h-0 opacity-0 mt-0'
-          }`}
-        >
-          {item.note}
-        </p>
       </div>
     </article>
   )
@@ -345,21 +338,16 @@ export default function ActTaste() {
           })}
         </div>
 
-        {/* Explicit Artist Credit to Yusuke Nakamura */}
+        {/* Explicit Plain-Text Artist Credit to Yusuke Nakamura */}
         <div className="pt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.12] font-pf-label text-[10.5px] uppercase text-white/60">
           <span className="bg-black/50 px-2.5 py-1 border border-white/[0.08]">
             BACKGROUND COLLAGE ARTWORK BY{' '}
-            <a
-              href={credit.url}
-              target="_blank"
-              rel="noreferrer"
-              className="text-white underline underline-offset-4 decoration-white/40 hover:decoration-white transition-colors"
-            >
-              {credit.artist} ({credit.jpName}) ↗
-            </a>
+            <span className="text-white">
+              {credit.artist} ({credit.jpName})
+            </span>
           </span>
           <span className="text-white/45 bg-black/45 px-2 py-1">
-            3×3 PERSONAL ARCHIVE · ANIME · MANGA · ALBUMS
+            3×3 · ANIME · MANGA · ALBUMS
           </span>
         </div>
       </div>

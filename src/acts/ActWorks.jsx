@@ -1,17 +1,24 @@
 import { useEffect, useState } from 'react'
 import RepoArchiveDrawer from '../components/RepoArchiveDrawer'
 import { PORTFOLIO_DATA } from '../data/portfolio'
-import { spectralRGB } from '../utils/optics'
+
+const LANGUAGE_COLORS = {
+  JavaScript: '#ffd00c',
+  TypeScript: '#00d2ff',
+  Go: '#00d2ff',
+  Python: '#10e476',
+  HTML: '#ff6210',
+  CSS: '#9234ff',
+  Rust: '#ff7b29',
+  Java: '#ff6210',
+  'C++': '#ff2044',
+  C: '#94a3b8',
+}
 
 export default function ActWorks() {
-  const [activeIdx, setActiveIdx] = useState(0)
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [repos, setRepos] = useState(PORTFOLIO_DATA.placeholderRepos)
+  const [repos, setRepos] = useState([])
   const [repoStatus, setRepoStatus] = useState('loading')
-
-  const projects = PORTFOLIO_DATA.featuredProjects
-  const activeProject = projects[activeIdx]
-  const [actR, actG, actB] = spectralRGB(activeProject.uColor)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -23,29 +30,32 @@ export default function ActWorks() {
         return res.json()
       })
       .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           setRepos(data)
           setRepoStatus('live')
         } else {
-          setRepos(PORTFOLIO_DATA.placeholderRepos)
-          setRepoStatus('fallback')
+          setRepos([])
+          setRepoStatus('error')
         }
       })
       .catch((err) => {
         if (err.name === 'AbortError') return
-        setRepos(PORTFOLIO_DATA.placeholderRepos)
-        setRepoStatus('fallback')
+        setRepos([])
+        setRepoStatus('error')
       })
 
     return () => controller.abort()
   }, [])
 
+  const recentRepos = repos.slice(0, 6)
+  const { eyebrow, heading, emptyHeadline, emptyBody } = PORTFOLIO_DATA.actTwo
+
   return (
     <>
       <section
         id="works"
-        aria-label="Selected Works & GitHub Archive"
-        className="relative min-h-[90svh] w-full flex flex-col justify-between px-6 md:px-11 py-24 md:py-28 overflow-hidden"
+        aria-label="Projects & GitHub Repositories"
+        className="relative min-h-[82svh] w-full flex flex-col justify-between px-6 md:px-11 py-24 md:py-28 overflow-hidden"
       >
         {/* Top optical thread continuing smoothly from the Breathe Eclipse */}
         <div
@@ -62,140 +72,130 @@ export default function ActWorks() {
           <div className="flex flex-wrap items-end justify-between gap-6 border-b border-white/[0.1] pb-6">
             <div className="space-y-1.5">
               <div className="font-pf-label text-[11px] uppercase text-white/40">
-                02 // {PORTFOLIO_DATA.actTwo.eyebrow}
+                02 // {eyebrow}
               </div>
               <h2 className="font-pf-main font-normal text-3xl sm:text-5xl uppercase leading-[1.06] text-white/95">
-                {PORTFOLIO_DATA.actTwo.heading}
+                {heading}
               </h2>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setDrawerOpen(true)}
-              className="font-pf-label text-[12px] uppercase text-white/85 hover:text-amber-300 transition-colors cursor-pointer pb-1 border-b border-white/25 hover:border-amber-300"
-            >
-              ALL REPOSITORIES ({repos.length}) →
-            </button>
+            {repos.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(true)}
+                className="font-pf-label text-[12px] uppercase text-white/85 hover:text-amber-300 transition-colors cursor-pointer pb-1 border-b border-white/25 hover:border-amber-300"
+              >
+                ALL REPOSITORIES ({repos.length}) →
+              </button>
+            )}
           </div>
 
-          {/* Frameless pinkfloyd.com Editorial Works List + Active Wavelength Dossier */}
+          {/* Honest Editorial Layout: Empty Featured State + Real Live GitHub Log */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-            {/* Left: Bare typographic project index */}
-            <ul className="lg:col-span-7 divide-y divide-white/[0.08]">
-              {projects.map((p, idx) => {
-                const isActive = idx === activeIdx
-                const [r, g, b] = spectralRGB(p.uColor)
-                const color = `rgb(${r}, ${g}, ${b})`
-                return (
-                  <li
-                    key={p.id}
-                    tabIndex={0}
-                    onMouseEnter={() => setActiveIdx(idx)}
-                    onFocus={() => setActiveIdx(idx)}
-                    onClick={() => setActiveIdx(idx)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        setActiveIdx(idx)
-                      }
-                    }}
-                    className="py-5 cursor-pointer group flex items-center justify-between gap-6 transition-colors"
-                  >
-                    <div className="flex items-baseline gap-5 min-w-0">
-                      <span className="font-pf-label text-[11px] text-white/30 tabular-nums">
-                        {p.num}
-                      </span>
-                      <div className="min-w-0">
-                        <div
-                          className={`font-pf-main text-xl sm:text-2xl uppercase tracking-[-0.01em] transition-colors truncate ${
-                            isActive ? 'text-white' : 'text-white/50 group-hover:text-white/85'
-                          }`}
-                        >
-                          {p.title}
-                        </div>
-                        <div className="font-pf-label text-[11px] uppercase text-white/35 mt-1 flex items-center gap-2">
-                          <span
-                            className="w-1.5 h-1.5 rounded-full"
-                            style={{
-                              backgroundColor: color,
-                              boxShadow: isActive ? `0 0 8px ${color}` : 'none',
-                            }}
-                          />
-                          <span>{p.wave}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <span
-                      className={`font-pf-label text-[11px] uppercase shrink-0 transition-colors ${
-                        isActive ? 'text-white' : 'text-white/25 group-hover:text-white/60'
-                      }`}
-                    >
-                      {p.year} →
-                    </span>
-                  </li>
-                )
-              })}
-            </ul>
-
-            {/* Right: Focused Project Specification */}
-            <div className="lg:col-span-5 lg:border-l lg:border-white/[0.08] lg:pl-10 space-y-5 pt-2">
-              <div className="flex items-center justify-between font-pf-label text-[11px] uppercase">
-                <span
-                  className="flex items-center gap-2"
-                  style={{ color: `rgb(${actR}, ${actG}, ${actB})` }}
-                >
-                  <span
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{
-                      backgroundColor: `rgb(${actR}, ${actG}, ${actB})`,
-                      boxShadow: `0 0 10px rgb(${actR}, ${actG}, ${actB})`,
-                    }}
-                  />
-                  {activeProject.wave}
-                </span>
-                <span className="text-white/35 tabular-nums">
-                  {activeProject.num} / 0{projects.length}
-                </span>
-              </div>
-
-              <h3 className="font-pf-main font-medium text-2xl uppercase text-white/95 leading-[1.15]">
-                {activeProject.title}
+            {/* Left: Honest Current Status */}
+            <div className="lg:col-span-5 space-y-5 pt-1">
+              <h3 className="font-pf-main font-normal text-2xl sm:text-3xl uppercase text-white/90 leading-[1.15]">
+                {emptyHeadline}
               </h3>
 
-              <p className="font-pf-main text-[14px] text-white/55 leading-[1.55]">
-                {activeProject.description}
+              <p className="font-pf-main text-[14.5px] text-white/50 leading-[1.6] max-w-md">
+                {emptyBody}
               </p>
 
-              <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-white/[0.06] font-pf-label text-[11px] uppercase text-white/40">
-                {activeProject.tags.map((tag, i) => (
-                  <span key={tag} className="flex items-center gap-3">
-                    {i > 0 && <span className="text-white/15">·</span>}
-                    {tag}
-                  </span>
-                ))}
-              </div>
-
-              <div className="pt-3 flex items-center gap-6 font-pf-label text-[12px] uppercase">
+              <div className="pt-3 flex flex-wrap items-center gap-6 font-pf-label text-[12px] uppercase">
                 <a
-                  href={activeProject.repoUrl}
+                  href={PORTFOLIO_DATA.socials.github}
                   target="_blank"
                   rel="noreferrer"
                   className="text-white/90 hover:text-amber-300 transition-colors"
                 >
-                  SOURCE CODE →
+                  GITHUB PROFILE →
                 </a>
-                {activeProject.liveUrl && (
-                  <a
-                    href={activeProject.liveUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-cyan-300/80 hover:text-white transition-colors"
+                {repos.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setDrawerOpen(true)}
+                    className="text-white/45 hover:text-white transition-colors cursor-pointer"
                   >
-                    LIVE PREVIEW →
-                  </a>
+                    BROWSE ARCHIVE
+                  </button>
                 )}
               </div>
+            </div>
+
+            {/* Right: Live Recent Public Repositories straight from GitHub (zero fake projects) */}
+            <div className="lg:col-span-7 lg:border-l lg:border-white/[0.08] lg:pl-10 space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-white/[0.08] font-pf-label text-[10.5px] uppercase text-white/40">
+                <span>RECENT ON GITHUB</span>
+                <span>@{PORTFOLIO_DATA.githubUsername}</span>
+              </div>
+
+              {repoStatus === 'loading' ? (
+                <div className="py-12 font-pf-label text-[11px] uppercase text-white/35">
+                  LOADING REPOSITORIES...
+                </div>
+              ) : recentRepos.length === 0 ? (
+                <div className="py-12 font-pf-label text-[11px] uppercase text-white/35">
+                  COULD NOT LOAD GITHUB REPOSITORIES —{' '}
+                  <a
+                    href={PORTFOLIO_DATA.socials.github}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-white/75 hover:text-white underline underline-offset-4"
+                  >
+                    OPEN GITHUB →
+                  </a>
+                </div>
+              ) : (
+                <ul className="divide-y divide-white/[0.07]">
+                  {recentRepos.map((repo, idx) => {
+                    const langColor = LANGUAGE_COLORS[repo.language] || '#94a3b8'
+                    const year = repo.updated_at ? repo.updated_at.slice(0, 4) : '—'
+                    return (
+                      <li key={repo.id} className="py-3.5 group">
+                        <a
+                          href={repo.html_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-baseline justify-between gap-4"
+                        >
+                          <div className="flex items-baseline gap-4 min-w-0">
+                            <span className="font-pf-label text-[10.5px] text-white/25 tabular-nums shrink-0">
+                              {String(idx + 1).padStart(2, '0')}
+                            </span>
+                            <div className="min-w-0">
+                              <div className="font-pf-main text-base sm:text-lg text-white/80 group-hover:text-white transition-colors truncate">
+                                {repo.name}
+                              </div>
+                              {repo.description && (
+                                <p className="font-pf-main text-[12.5px] text-white/40 mt-0.5 truncate">
+                                  {repo.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-4 shrink-0 font-pf-label text-[10.5px] uppercase text-white/35">
+                            {repo.language && (
+                              <span className="hidden sm:inline-flex items-center gap-1.5">
+                                <span
+                                  className="w-1.5 h-1.5 rounded-full"
+                                  style={{ backgroundColor: langColor }}
+                                />
+                                {repo.language}
+                              </span>
+                            )}
+                            <span className="tabular-nums">{year}</span>
+                            <span className="text-white/30 group-hover:text-white transition-colors">
+                              →
+                            </span>
+                          </div>
+                        </a>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
             </div>
           </div>
         </div>

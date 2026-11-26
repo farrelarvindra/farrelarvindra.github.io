@@ -447,16 +447,16 @@ export default function InterludeBreathe() {
         }}
       />
 
-      {/* Real-Time Scroll-Choreographed Quote & Attribution */}
+      {/* Real-Time Scroll-Choreographed Quote & Attribution (unified Pink Floyd quote format) */}
       <figure
         ref={quoteRef}
-        className="relative z-10 max-w-2xl mx-auto text-center space-y-3.5 pt-96 pointer-events-none will-change-transform"
+        className="relative z-10 max-w-2xl mx-auto text-center space-y-4 pt-96 pointer-events-none will-change-transform"
       >
-        <blockquote className="font-pf-main font-normal text-lg sm:text-2xl md:text-[26px] uppercase leading-[1.25] text-white/90 tracking-[-0.01em]">
-          &ldquo;{quote}&rdquo;
+        <blockquote className="font-pf-main font-light italic text-xl sm:text-2xl md:text-[28px] leading-[1.38] text-white/90 tracking-[-0.01em]">
+          “{quote}”
         </blockquote>
-        <figcaption className="font-pf-label text-[11px] sm:text-[12px] uppercase text-white/45 tracking-[0.14em]">
-          &mdash; &ldquo;{source}&rdquo;
+        <figcaption className="font-pf-label text-[10.5px] sm:text-[11px] uppercase text-white/40 tracking-[0.14em]">
+          — {source}
         </figcaption>
         <p className="font-pf-label text-[10px] uppercase text-white/25 tracking-[0.18em] pt-2">
           MOVE OR DRAG TO SHIFT THE MOON

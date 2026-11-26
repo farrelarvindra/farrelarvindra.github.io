@@ -24,6 +24,14 @@ const COMET_TINTS = new Float32Array([
   1.0, 0.18, 0.34, // 680nm Crimson-Rose
 ])
 
+// Orbital trajectories for the 4 approaching optical light-comets
+const COMET_TRACKS = [
+  { angle: 0.16, zOffset: 0.0 },
+  { angle: -0.76, zOffset: 0.25 },
+  { angle: -2.36, zOffset: 0.5 },
+  { angle: 2.34, zOffset: 0.75 },
+]
+
 const COMET_VERT = `
   attribute vec2 aPos;
   void main() {
@@ -262,7 +270,6 @@ export default function IntroHyperspace({ onComplete }) {
 
     // Pre-allocate full jump pool (1,350 stars) for zero-stutter density surge when ENTER is clicked
     const stars = Array.from({ length: MAX_STAR_DENSITY }, () => spawnStar(true))
-    const projects = PORTFOLIO_DATA.featuredProjects
 
     const uC0 = new Float32Array(16)
     const uC1 = new Float32Array(16)
@@ -449,7 +456,7 @@ export default function IntroHyperspace({ onComplete }) {
           // 2. FOUR COMPACT COLORED OPTICAL LIGHT-COMETS
           cometClock = (cometClock + dt * 0.22 * cometSpeed) % 1
           const maxR = Math.hypot(w, h) * 0.66
-          const ordered = projects
+          const ordered = COMET_TRACKS
             .map((frag, idx) => ({
               frag,
               idx,
@@ -607,7 +614,7 @@ export default function IntroHyperspace({ onComplete }) {
         </button>
 
         <span className="font-pf-label text-[11px] uppercase tracking-[0.18em] text-white/40">
-          OPTICAL PORTFOLIO · PRESS ENTER
+          PRESS ENTER
         </span>
       </div>
 

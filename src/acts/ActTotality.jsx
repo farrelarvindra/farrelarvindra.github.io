@@ -506,69 +506,23 @@ export default function ActTotality({ onReplayIntro }) {
       />
 
       {/* =========================================================
-          SPECTRAL CONVERGENCE FILAMENTS (Act I's dispersion reuniting)
-          ========================================================= */}
-      <svg
-        aria-hidden="true"
-        viewBox="0 0 1200 320"
-        preserveAspectRatio="none"
-        className="absolute top-0 inset-x-0 w-full h-[300px] sm:h-[340px] pointer-events-none opacity-80"
-      >
-        <defs>
-          <linearGradient id="conv-red" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#ff2044" stopOpacity="0" />
-            <stop offset="55%" stopColor="#ff2044" stopOpacity="0.22" />
-            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.35" />
-          </linearGradient>
-          <linearGradient id="conv-amber" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#ffd00c" stopOpacity="0" />
-            <stop offset="55%" stopColor="#ffd00c" stopOpacity="0.2" />
-            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.35" />
-          </linearGradient>
-          <linearGradient id="conv-cyan" x1="100%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#00d2ff" stopOpacity="0" />
-            <stop offset="55%" stopColor="#00d2ff" stopOpacity="0.2" />
-            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.35" />
-          </linearGradient>
-          <linearGradient id="conv-violet" x1="100%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#9234ff" stopOpacity="0" />
-            <stop offset="55%" stopColor="#9234ff" stopOpacity="0.24" />
-            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.35" />
-          </linearGradient>
-          <radialGradient id="conv-node" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.65" />
-            <stop offset="35%" stopColor="#ffd00c" stopOpacity="0.16" />
-            <stop offset="100%" stopColor="#020204" stopOpacity="0" />
-          </radialGradient>
-        </defs>
-
-        <path d="M 60 20 Q 340 160 600 185" fill="none" stroke="url(#conv-red)" strokeWidth="1" />
-        <path d="M 190 0 Q 410 135 600 185" fill="none" stroke="url(#conv-amber)" strokeWidth="1" />
-        <path d="M 1010 0 Q 790 135 600 185" fill="none" stroke="url(#conv-cyan)" strokeWidth="1" />
-        <path d="M 1140 20 Q 860 160 600 185" fill="none" stroke="url(#conv-violet)" strokeWidth="1" />
-
-        <circle cx="600" cy="185" r="36" fill="url(#conv-node)" />
-        <circle cx="600" cy="185" r="2" fill="#ffffff" fillOpacity="0.85" />
-      </svg>
-
-      {/* =========================================================
           UPPER CHAPTER: ECLIPSE LYRIC & FRAMELESS CONTACT INDEX
           ========================================================= */}
       <div className="relative z-10 max-w-5xl w-full mx-auto px-6 md:px-11 space-y-14 pt-12">
-        {/* Closing Eclipse Quote */}
-        <div className="text-center space-y-4 max-w-2xl mx-auto">
+        {/* Closing Eclipse Quote (unified Pink Floyd quote format, pure starfield backdrop) */}
+        <figure className="text-center space-y-4 max-w-2xl mx-auto">
           <div className="font-pf-label text-[11px] uppercase text-white/45">
             04 // {eyebrow}
           </div>
 
-          <blockquote className="font-pf-main font-light italic text-xl sm:text-3xl md:text-[32px] leading-[1.35] text-white/92">
+          <blockquote className="font-pf-main font-light italic text-xl sm:text-2xl md:text-[28px] leading-[1.38] text-white/90 tracking-[-0.01em]">
             “{quote}”
           </blockquote>
 
-          <div className="font-pf-label text-[10.5px] uppercase text-white/35 tracking-[0.14em]">
+          <figcaption className="font-pf-label text-[10.5px] sm:text-[11px] uppercase text-white/40 tracking-[0.14em]">
             — {quoteSource}
-          </div>
-        </div>
+          </figcaption>
+        </figure>
 
         {/* Signal Contact Index + Low-Opacity Feathered Darkroom Portrait */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
@@ -691,12 +645,15 @@ export default function ActTotality({ onReplayIntro }) {
           className="absolute inset-0 w-full h-full block"
         />
 
-        {/* Quote positioned comfortably in the middle-upper dark cosmos above the Moon */}
-        <div className="relative z-10 flex flex-col items-center px-6 pt-24 sm:pt-32 pointer-events-none">
-          <p className="font-pf-main font-light italic text-lg sm:text-2xl md:text-[26px] leading-[1.45] text-white/85 text-center max-w-xl drop-shadow-[0_2px_18px_rgba(2,2,4,0.95)]">
+        {/* Quote positioned comfortably in the middle-upper dark cosmos above the Moon (unified quote format) */}
+        <figure className="relative z-10 flex flex-col items-center px-6 pt-24 sm:pt-32 space-y-4 pointer-events-none">
+          <blockquote className="font-pf-main font-light italic text-xl sm:text-2xl md:text-[28px] leading-[1.38] text-white/90 tracking-[-0.01em] text-center max-w-2xl drop-shadow-[0_2px_18px_rgba(2,2,4,0.95)]">
             “{whisper}”
-          </p>
-        </div>
+          </blockquote>
+          <figcaption className="font-pf-label text-[10.5px] sm:text-[11px] uppercase text-white/40 tracking-[0.14em]">
+            — {quoteSource}
+          </figcaption>
+        </figure>
 
         {/* Quiet navigation tucked into the obsidian lunar ground underfoot */}
         <div

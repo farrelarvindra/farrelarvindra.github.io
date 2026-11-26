@@ -96,12 +96,6 @@ export default function RepoArchiveDrawer({ isOpen, onClose, repos, status }) {
               <span>GITHUB ARCHIVE</span>
               <span className="text-white/20">·</span>
               <span>@{PORTFOLIO_DATA.githubUsername}</span>
-              {status === 'fallback' && (
-                <>
-                  <span className="text-white/20">·</span>
-                  <span className="text-amber-300/75">PLACEHOLDER FALLBACK</span>
-                </>
-              )}
             </div>
             <h2 className="font-pf-main font-normal text-2xl md:text-3xl uppercase text-white/95 mt-1.5">
               All Repositories ({repos.length})
@@ -196,16 +190,13 @@ export default function RepoArchiveDrawer({ isOpen, onClose, repos, status }) {
                               [FORK]
                             </span>
                           )}
-                          {repo.isPlaceholder && (
-                            <span className="font-pf-label text-[10px] uppercase text-amber-300/60">
-                              [PLACEHOLDER]
-                            </span>
-                          )}
                         </div>
 
-                        <p className="font-pf-main text-[13px] text-white/45 leading-[1.45] pl-7">
-                          {repo.description || 'No description provided yet.'}
-                        </p>
+                        {repo.description && (
+                          <p className="font-pf-main text-[13px] text-white/45 leading-[1.45] pl-7">
+                            {repo.description}
+                          </p>
+                        )}
 
                         <div className="flex items-center gap-5 pl-7 pt-1 font-pf-label text-[11px] uppercase text-white/35">
                           <span className="flex items-center gap-1.5">
