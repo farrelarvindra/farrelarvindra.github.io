@@ -82,20 +82,19 @@ export default function CosmicBackdrop() {
         ctx.fillStyle = '#020204'
         ctx.fillRect(0, 0, w, h)
 
-        // Keep the entire top page (#refraction) a pure starless #020204 abyss;
-        // stars emerge smoothly only as the user descends below Act I into the Eclipse & Moon.
-        const scrollGate = smoothstep(h * 0.22, h * 0.78, scrollY)
+        // Keep the entire top page (#refraction) and its exit transition a 100% pitch-black
+        // starless abyss; hushed deep-space stars emerge only far below once past Act I.
+        const topBoundary = Math.max(h, refractionBottom)
+        const scrollGate = smoothstep(topBoundary * 1.02, topBoundary * 1.68, scrollY)
         if (scrollGate > 0.002) {
-          const topBoundary = Math.max(h, refractionBottom)
-
           for (const s of STARS) {
             const sx = s.x * w
             const rawY = (s.y * h - smoothScroll * s.depth) % h
             const sy = rawY < 0 ? rawY + h : rawY
 
             const docY = scrollY + sy
-            const spatialGate = smoothstep(topBoundary * 0.98, topBoundary * 1.44, docY)
-            const visibility = scrollGate * spatialGate
+            const spatialGate = smoothstep(topBoundary * 1.15, topBoundary * 1.75, docY)
+            const visibility = scrollGate * spatialGate * 0.62
             if (visibility < 0.004) continue
 
             const twinkle = 0.72 + 0.28 * Math.sin(t * s.twSpeed + s.twPhase)

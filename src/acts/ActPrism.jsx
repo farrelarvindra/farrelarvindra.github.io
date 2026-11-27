@@ -1,16 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { PORTFOLIO_DATA } from '../data/portfolio'
-import { drawRainbowFan, setupHiDPICanvas, spectralRGB } from '../utils/optics'
-
-// Deterministic suspended dust motes (sparkle only inside the incident & refracted light paths)
-const INITIAL_MOTES = Array.from({ length: 95 }, (_, i) => ({
-  x: ((i * 67.3) % 100) / 100,
-  y: ((i * 41.9) % 100) / 100,
-  vx: (((i * 13) % 9) - 4) * 0.00003,
-  vy: (((i * 29) % 9) - 4) * 0.00003,
-  r: 0.55 + (i % 3) * 0.35,
-  tw: i * 1.1,
-}))
+import { drawRainbowFan, setupHiDPICanvas } from '../utils/optics'
 
 // Regular 3D tetrahedron local vertices (Apex V0, Back-Left V1, Back-Right V2, Front-Ridge V3)
 const TETRA_VERTS = [
@@ -129,7 +119,6 @@ export default function ActPrism({
     if (!canvas) return undefined
 
     let sizeState = setupHiDPICanvas(canvas)
-    const motes = INITIAL_MOTES.map((m) => ({ ...m }))
     const reflStrength = 0.78
     let lastTs = performance.now()
     let rafId = 0
@@ -419,48 +408,6 @@ export default function ActPrism({
           pCtx.arc(pt.x, pt.y, r, 0, Math.PI * 2)
           pCtx.fill()
         })
-
-        // 6. Microscopic dust specks illuminated strictly within the light paths
-        if (dispVis > 0.05) {
-          for (const m of motes) {
-            m.x = (m.x + m.vx + 1) % 1
-            m.y = (m.y + m.vy + 1) % 1
-            const mx = m.x * w
-            const my = m.y * h
-
-            let alpha = 0
-            let rgb = '255,255,255'
-
-            if (mx > exitPt.x) {
-              const ang = Math.atan2(my - exitPt.y, mx - exitPt.x)
-              const half = mainSpread * 0.56
-              if (Math.abs(ang - mainAngle) < half) {
-                const u = (ang - (mainAngle - half)) / (half * 2)
-                const [cr, cg, cb] = spectralRGB(u)
-                rgb = `${cr},${cg},${cb}`
-                alpha = 0.62 * dispVis
-              } else if (Math.abs(ang - reflAngleUp) < reflSpreadUp * 0.6) {
-                const u = 1 - (ang - (reflAngleUp - reflSpreadUp * 0.6)) / (reflSpreadUp * 1.2)
-                const [cr, cg, cb] = spectralRGB(u)
-                rgb = `${cr},${cg},${cb}`
-                alpha = 0.35 * reflStrength * dispVis
-              }
-            } else {
-              const beamY = beamStartY + (entryPt.y - beamStartY) * (mx / entryPt.x)
-              if (Math.abs(my - beamY) < 10) {
-                alpha = 0.55 * dispVis
-              }
-            }
-
-            if (alpha > 0.01) {
-              const tw = 0.5 + 0.5 * Math.sin(t * 0.0025 + m.tw)
-              pCtx.fillStyle = `rgba(${rgb}, ${(alpha * tw).toFixed(3)})`
-              pCtx.beginPath()
-              pCtx.arc(mx, my, m.r, 0, Math.PI * 2)
-              pCtx.fill()
-            }
-          }
-        }
         pCtx.restore()
       }
 
