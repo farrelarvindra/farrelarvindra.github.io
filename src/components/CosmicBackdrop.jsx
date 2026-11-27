@@ -30,6 +30,11 @@ const STARS = Array.from({ length: 440 }, (_, i) => {
   }
 })
 
+function smoothstep(edge0, edge1, x) {
+  const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0 || 1)))
+  return t * t * (3 - 2 * t)
+}
+
 export default function CosmicBackdrop() {
   const canvasRef = useRef(null)
 
@@ -39,42 +44,76 @@ export default function CosmicBackdrop() {
 
     let sizeState = setupHiDPICanvas(canvas)
     let smoothScroll = window.scrollY
+    let refractionBottom = window.innerHeight || 900
     let rafId = 0
+
+    const measureTopPage = () => {
+      const topSection = document.getElementById('refraction')
+      if (topSection) {
+        const rect = topSection.getBoundingClientRect()
+        refractionBottom = Math.max(1, rect.top + window.scrollY + rect.height)
+      } else {
+        refractionBottom = window.innerHeight || 900
+      }
+    }
 
     const onResize = () => {
       sizeState = setupHiDPICanvas(canvas)
+      measureTopPage()
     }
     window.addEventListener('resize', onResize)
+    measureTopPage()
+
+    let ro = null
+    const topEl = document.getElementById('refraction')
+    if (topEl && typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(measureTopPage)
+      ro.observe(topEl)
+    }
 
     const render = (t) => {
       if (!sizeState) sizeState = setupHiDPICanvas(canvas)
       if (sizeState) {
         const { w, h, ctx } = sizeState
-        smoothScroll += (window.scrollY - smoothScroll) * 0.24
+        const scrollY = window.scrollY
+        smoothScroll += (scrollY - smoothScroll) * 0.24
 
         ctx.clearRect(0, 0, w, h)
         ctx.fillStyle = '#020204'
         ctx.fillRect(0, 0, w, h)
 
-        for (const s of STARS) {
-          const sx = s.x * w
-          const rawY = (s.y * h - smoothScroll * s.depth) % h
-          const sy = rawY < 0 ? rawY + h : rawY
-          const twinkle = 0.72 + 0.28 * Math.sin(t * s.twSpeed + s.twPhase)
-          const alpha = Math.min(0.95, s.baseAlpha * twinkle)
+        // Keep the entire top page (#refraction) a pure starless #020204 abyss;
+        // stars emerge smoothly only as the user descends below Act I into the Eclipse & Moon.
+        const scrollGate = smoothstep(h * 0.22, h * 0.78, scrollY)
+        if (scrollGate > 0.002) {
+          const topBoundary = Math.max(h, refractionBottom)
 
-          // Whisper-subtle optical bloom only on the sparse brighter anchor stars
-          if (s.isAnchor) {
-            ctx.fillStyle = `rgba(${s.tint}, ${(alpha * 0.22).toFixed(3)})`
+          for (const s of STARS) {
+            const sx = s.x * w
+            const rawY = (s.y * h - smoothScroll * s.depth) % h
+            const sy = rawY < 0 ? rawY + h : rawY
+
+            const docY = scrollY + sy
+            const spatialGate = smoothstep(topBoundary * 0.98, topBoundary * 1.44, docY)
+            const visibility = scrollGate * spatialGate
+            if (visibility < 0.004) continue
+
+            const twinkle = 0.72 + 0.28 * Math.sin(t * s.twSpeed + s.twPhase)
+            const alpha = Math.min(0.95, s.baseAlpha * twinkle) * visibility
+
+            // Whisper-subtle optical bloom only on the sparse brighter anchor stars
+            if (s.isAnchor) {
+              ctx.fillStyle = `rgba(${s.tint}, ${(alpha * 0.22).toFixed(3)})`
+              ctx.beginPath()
+              ctx.arc(sx, sy, s.r * 2.5, 0, Math.PI * 2)
+              ctx.fill()
+            }
+
+            ctx.fillStyle = `rgba(${s.tint}, ${alpha.toFixed(3)})`
             ctx.beginPath()
-            ctx.arc(sx, sy, s.r * 2.5, 0, Math.PI * 2)
+            ctx.arc(sx, sy, s.r, 0, Math.PI * 2)
             ctx.fill()
           }
-
-          ctx.fillStyle = `rgba(${s.tint}, ${alpha.toFixed(3)})`
-          ctx.beginPath()
-          ctx.arc(sx, sy, s.r, 0, Math.PI * 2)
-          ctx.fill()
         }
       }
       rafId = requestAnimationFrame(render)
@@ -84,6 +123,7 @@ export default function CosmicBackdrop() {
     return () => {
       cancelAnimationFrame(rafId)
       window.removeEventListener('resize', onResize)
+      if (ro) ro.disconnect()
     }
   }, [])
 

@@ -114,7 +114,7 @@ export default function SpectrumHUD({ biasAngle = 28, onReplayIntro }) {
   return (
     <>
       {/* Minimal pinkfloyd.com-inspired floating top bar */}
-      <header className="fixed top-0 inset-x-0 z-40 flex items-center justify-between px-6 py-5 md:px-11 md:py-7 pointer-events-none bg-gradient-to-b from-[#020204]/90 via-[#020204]/40 to-transparent">
+      <header className="fixed top-0 inset-x-0 z-40 flex items-center justify-between px-6 py-5 md:px-11 md:py-7 pointer-events-none bg-gradient-to-b from-[#020204]/90 via-[#020204]/40 to-transparent animate-pf-fade">
         <a href="#refraction" className="group pointer-events-auto">
           <div className="font-pf-wordmark text-xl md:text-2xl uppercase leading-none text-white/95 group-hover:text-white transition">
             {PORTFOLIO_DATA.name}

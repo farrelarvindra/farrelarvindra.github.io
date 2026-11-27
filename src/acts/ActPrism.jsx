@@ -51,7 +51,16 @@ function barycentric3(a, b, c, wa, wb, wc) {
   }
 }
 
-export default function ActPrism({ onBiasChange }) {
+function smoothstep(edge0, edge1, x) {
+  const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0 || 1)))
+  return t * t * (3 - 2 * t)
+}
+
+export default function ActPrism({
+  onBiasChange,
+  introState = 'entered',
+  skipInstant = false,
+}) {
   const sectionRef = useRef(null)
   const canvasRef = useRef(null)
   const copyRef = useRef(null)
@@ -59,17 +68,42 @@ export default function ActPrism({ onBiasChange }) {
   const targetBiasRef = useRef(0.28)
   const smoothBiasRef = useRef(0.28)
   const lastReportedDegRef = useRef(28)
+  const introStateRef = useRef(introState)
+  const skipInstantRef = useRef(skipInstant)
+  const emergenceRef = useRef(introState === 'entered' ? 1 : 0)
+  const scrollRatioRef = useRef(0)
   const [activeDiscipline, setActiveDiscipline] = useState(null)
+
+  const syncCopyTransform = () => {
+    const el = copyRef.current
+    if (!el) return
+    const copyReveal = smoothstep(0.36, 1.0, emergenceRef.current)
+    const ratio = scrollRatioRef.current
+    const scrollOpacity = Math.max(0.08, 1 - ratio * 0.92)
+    const opacity = scrollOpacity * copyReveal
+    const yOffset = -ratio * 28 + (1 - copyReveal) * 18
+    el.style.opacity = opacity.toFixed(3)
+    el.style.transform = `translate3d(0, ${yOffset.toFixed(1)}px, 0)`
+  }
+
+  useEffect(() => {
+    introStateRef.current = introState
+    skipInstantRef.current = skipInstant
+    if (introState === 'portal') {
+      emergenceRef.current = 0
+      syncCopyTransform()
+    } else if (introState === 'entered' && skipInstant) {
+      emergenceRef.current = 1
+      syncCopyTransform()
+    }
+  }, [introState, skipInstant])
 
   // Real-time 0-lag scroll choreography via direct DOM ref (zero React re-renders per scroll)
   useEffect(() => {
     const onScroll = () => {
-      const el = copyRef.current
-      if (!el) return
       const vh = window.innerHeight || 1
-      const ratio = Math.max(0, Math.min(1, window.scrollY / (vh * 0.72)))
-      el.style.opacity = Math.max(0.08, 1 - ratio * 0.92).toFixed(3)
-      el.style.transform = `translate3d(0, ${(-ratio * 28).toFixed(1)}px, 0)`
+      scrollRatioRef.current = Math.max(0, Math.min(1, window.scrollY / (vh * 0.72)))
+      syncCopyTransform()
     }
     window.addEventListener('scroll', onScroll, { passive: true })
     onScroll()
@@ -97,6 +131,7 @@ export default function ActPrism({ onBiasChange }) {
     let sizeState = setupHiDPICanvas(canvas)
     const motes = INITIAL_MOTES.map((m) => ({ ...m }))
     const reflStrength = 0.78
+    let lastTs = performance.now()
     let rafId = 0
 
     const handleResize = () => {
@@ -105,6 +140,9 @@ export default function ActPrism({ onBiasChange }) {
     window.addEventListener('resize', handleResize)
 
     const render = (t) => {
+      const dt = Math.min(0.05, Math.max(0.001, (t - lastTs) * 0.001))
+      lastTs = t
+
       if (!visibleRef.current) {
         rafId = requestAnimationFrame(render)
         return
@@ -112,6 +150,27 @@ export default function ActPrism({ onBiasChange }) {
       if (!sizeState) sizeState = setupHiDPICanvas(canvas)
       if (sizeState) {
         const { w, h, ctx: pCtx } = sizeState
+
+        // Transparent clear over the starless #020204 abyss
+        pCtx.globalCompositeOperation = 'source-over'
+        pCtx.clearRect(0, 0, w, h)
+
+        // Idle cleanly while user is still inside the Abyss Portal before throat opens
+        if (introStateRef.current === 'portal') {
+          rafId = requestAnimationFrame(render)
+          return
+        }
+
+        if (emergenceRef.current < 1) {
+          const speed = skipInstantRef.current ? 2.6 : 0.76
+          emergenceRef.current = Math.min(1, emergenceRef.current + dt * speed)
+          syncCopyTransform()
+        }
+
+        const em = emergenceRef.current
+        const crystalVis = smoothstep(0.0, 0.48, em)
+        const rayVis = smoothstep(0.14, 0.62, em)
+        const dispVis = smoothstep(0.48, 1.0, em)
 
         smoothBiasRef.current += (targetBiasRef.current - smoothBiasRef.current) * 0.08
         const breathe = Math.sin(t * 0.0009) * 0.035
@@ -123,14 +182,10 @@ export default function ActPrism({ onBiasChange }) {
           if (onBiasChange) onBiasChange(roundedDeg)
         }
 
-        // Transparent clear so the shared persistent CosmicBackdrop starfield shines seamlessly behind!
-        pCtx.globalCompositeOperation = 'source-over'
-        pCtx.clearRect(0, 0, w, h)
-
         // Small, understated 3D tetrahedron anchor (upper-left third so light dominates 80% of the dark room)
         const px = w * 0.33
-        const py = h * 0.39
-        const sz = Math.min(w, h) * 0.08
+        const py = h * 0.39 + (1 - crystalVis) * 10
+        const sz = Math.min(w, h) * 0.08 * (0.92 + 0.08 * crystalVis)
 
         // Subtle 3D orientation: diagonal cant + gentle 3D yaw breathing + bias pivot
         const pitch = 0.16 - bias * 0.08
@@ -150,80 +205,88 @@ export default function ActPrism({ onBiasChange }) {
         const baseReflPt = barycentric3(p1, p2, p3, 0.33, 0.33, 0.34)
 
         const diag = Math.hypot(w, h)
+        const fanReach = 0.22 + 0.78 * dispVis
 
         // 2. SECONDARY RAINBOW REFLECTIONS
         const reflAngleUp = -0.46 + bias * 0.24
         const reflSpreadUp = 0.16 + Math.abs(bias) * 0.06
-        drawRainbowFan(
-          pCtx,
-          exitPt.x,
-          exitPt.y,
-          reflAngleUp,
-          reflSpreadUp,
-          diag * 0.58,
-          2.2,
-          0.42 * reflStrength,
-          22,
-          true,
-        )
+        if (dispVis > 0.005) {
+          drawRainbowFan(
+            pCtx,
+            exitPt.x,
+            exitPt.y,
+            reflAngleUp,
+            reflSpreadUp,
+            diag * 0.58 * fanReach,
+            2.2,
+            0.42 * reflStrength * dispVis,
+            22,
+            true,
+          )
 
-        const reflAngleDownLeft = 2.38 - bias * 0.2
-        const reflSpreadDown = 0.22 + Math.abs(bias) * 0.08
-        drawRainbowFan(
-          pCtx,
-          entryPt.x + 4,
-          entryPt.y + 6,
-          reflAngleDownLeft,
-          reflSpreadDown,
-          diag * 0.46,
-          2.0,
-          0.36 * reflStrength,
-          20,
-          false,
-        )
+          const reflAngleDownLeft = 2.38 - bias * 0.2
+          const reflSpreadDown = 0.22 + Math.abs(bias) * 0.08
+          drawRainbowFan(
+            pCtx,
+            entryPt.x + 4,
+            entryPt.y + 6,
+            reflAngleDownLeft,
+            reflSpreadDown,
+            diag * 0.46 * fanReach,
+            2.0,
+            0.36 * reflStrength * dispVis,
+            20,
+            false,
+          )
 
-        const reflAngleBase = 1.28 + bias * 0.18
-        drawRainbowFan(
-          pCtx,
-          baseReflPt.x,
-          baseReflPt.y,
-          reflAngleBase,
-          0.19,
-          diag * 0.38,
-          3.0,
-          0.3 * reflStrength,
-          18,
-          false,
-        )
+          const reflAngleBase = 1.28 + bias * 0.18
+          drawRainbowFan(
+            pCtx,
+            baseReflPt.x,
+            baseReflPt.y,
+            reflAngleBase,
+            0.19,
+            diag * 0.38 * fanReach,
+            3.0,
+            0.3 * reflStrength * dispVis,
+            18,
+            false,
+          )
+        }
 
-        // 3. COHERENT INCIDENT WHITE RAY
+        // 3. COHERENT INCIDENT WHITE RAY (pierces out of the abyss onto the crystal facet)
         const beamStartY = py - h * 0.22 - bias * (h * 0.28)
-        pCtx.save()
-        pCtx.globalCompositeOperation = 'lighter'
+        if (rayVis > 0.005) {
+          const rayTipX = -10 + (entryPt.x + 10) * rayVis
+          const rayTipY = beamStartY + (entryPt.y - beamStartY) * rayVis
+          pCtx.save()
+          pCtx.globalCompositeOperation = 'lighter'
 
-        const outerIn = pCtx.createLinearGradient(0, beamStartY, entryPt.x, entryPt.y)
-        outerIn.addColorStop(0, 'rgba(200, 225, 255, 0.03)')
-        outerIn.addColorStop(1, 'rgba(225, 240, 255, 0.22)')
-        pCtx.strokeStyle = outerIn
-        pCtx.lineWidth = 13
-        pCtx.beginPath()
-        pCtx.moveTo(-10, beamStartY)
-        pCtx.lineTo(entryPt.x, entryPt.y)
-        pCtx.stroke()
+          const outerIn = pCtx.createLinearGradient(0, beamStartY, rayTipX, rayTipY)
+          outerIn.addColorStop(0, `rgba(200, 225, 255, ${(0.03 * rayVis).toFixed(3)})`)
+          outerIn.addColorStop(1, `rgba(225, 240, 255, ${(0.22 * rayVis).toFixed(3)})`)
+          pCtx.strokeStyle = outerIn
+          pCtx.lineWidth = 13
+          pCtx.beginPath()
+          pCtx.moveTo(-10, beamStartY)
+          pCtx.lineTo(rayTipX, rayTipY)
+          pCtx.stroke()
 
-        const coreIn = pCtx.createLinearGradient(0, beamStartY, entryPt.x, entryPt.y)
-        coreIn.addColorStop(0, 'rgba(255, 255, 255, 0.38)')
-        coreIn.addColorStop(1, 'rgba(255, 255, 255, 0.96)')
-        pCtx.strokeStyle = coreIn
-        pCtx.lineWidth = 2.6
-        pCtx.beginPath()
-        pCtx.moveTo(-10, beamStartY)
-        pCtx.lineTo(entryPt.x, entryPt.y)
-        pCtx.stroke()
-        pCtx.restore()
+          const coreIn = pCtx.createLinearGradient(0, beamStartY, rayTipX, rayTipY)
+          coreIn.addColorStop(0, `rgba(255, 255, 255, ${(0.38 * rayVis).toFixed(3)})`)
+          coreIn.addColorStop(1, `rgba(255, 255, 255, ${(0.96 * rayVis).toFixed(3)})`)
+          pCtx.strokeStyle = coreIn
+          pCtx.lineWidth = 2.6
+          pCtx.beginPath()
+          pCtx.moveTo(-10, beamStartY)
+          pCtx.lineTo(rayTipX, rayTipY)
+          pCtx.stroke()
+          pCtx.restore()
+        }
 
         // 4. 3D TETRAHEDRON BACK FACETS, INTERNAL DISPERSION & FRONT CRYSTAL FACETS
         pCtx.save()
+        pCtx.globalAlpha = crystalVis
         pCtx.fillStyle = 'rgba(160, 195, 255, 0.024)'
         pCtx.strokeStyle = 'rgba(255, 255, 255, 0.13)'
         pCtx.lineWidth = 0.8
@@ -245,22 +308,26 @@ export default function ActPrism({ onBiasChange }) {
         pCtx.stroke()
         pCtx.restore()
 
-        const internalAngle = Math.atan2(exitPt.y - entryPt.y, exitPt.x - entryPt.x)
-        const internalDist = Math.hypot(exitPt.x - entryPt.x, exitPt.y - entryPt.y)
-        drawRainbowFan(
-          pCtx,
-          entryPt.x,
-          entryPt.y,
-          internalAngle,
-          0.28,
-          internalDist * 1.12,
-          0.8,
-          0.85,
-          16,
-          false,
-        )
+        const internalHit = smoothstep(0.42, 0.82, em)
+        if (internalHit > 0.005) {
+          const internalAngle = Math.atan2(exitPt.y - entryPt.y, exitPt.x - entryPt.x)
+          const internalDist = Math.hypot(exitPt.x - entryPt.x, exitPt.y - entryPt.y)
+          drawRainbowFan(
+            pCtx,
+            entryPt.x,
+            entryPt.y,
+            internalAngle,
+            0.28,
+            internalDist * 1.12,
+            0.8,
+            0.85 * internalHit,
+            16,
+            false,
+          )
+        }
 
         pCtx.save()
+        pCtx.globalAlpha = crystalVis * (0.25 + 0.75 * dispVis)
         pCtx.globalCompositeOperation = 'lighter'
         const edgeRainbow = pCtx.createLinearGradient(p1.x, p1.y, p2.x, p2.y)
         edgeRainbow.addColorStop(0.0, 'rgba(146, 52, 255, 0.45)')
@@ -279,6 +346,7 @@ export default function ActPrism({ onBiasChange }) {
         pCtx.restore()
 
         pCtx.save()
+        pCtx.globalAlpha = crystalVis
         pCtx.fillStyle = 'rgba(255, 255, 255, 0.032)'
         pCtx.strokeStyle = 'rgba(255, 255, 255, 0.28)'
         pCtx.lineWidth = 0.95
@@ -315,29 +383,35 @@ export default function ActPrism({ onBiasChange }) {
         // 5. PRIMARY BIASED RAINBOW DISPERSION BEAM
         const mainAngle = 0.36 + bias * 0.34
         const mainSpread = 0.3 + Math.abs(bias) * 0.14
-        drawRainbowFan(
-          pCtx,
-          exitPt.x,
-          exitPt.y,
-          mainAngle,
-          mainSpread,
-          diag * 0.88,
-          2.8,
-          0.96,
-          36,
-          false,
-        )
+        if (dispVis > 0.005) {
+          drawRainbowFan(
+            pCtx,
+            exitPt.x,
+            exitPt.y,
+            mainAngle,
+            mainSpread,
+            diag * 0.88 * fanReach,
+            2.8,
+            0.96 * dispVis,
+            36,
+            false,
+          )
+        }
 
         // Subtle optical pinpoints at entry & exit facets
         pCtx.save()
         pCtx.globalCompositeOperation = 'lighter'
         ;[entryPt, exitPt].forEach((pt, idx) => {
+          const pinVis = idx === 0 ? smoothstep(0.45, 0.7, em) : dispVis
+          if (pinVis < 0.01) return
           const r = idx === 1 ? 14 : 9
           const g = pCtx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, r)
-          g.addColorStop(0, 'rgba(255, 255, 255, 0.85)')
+          g.addColorStop(0, `rgba(255, 255, 255, ${(0.85 * pinVis).toFixed(3)})`)
           g.addColorStop(
             0.4,
-            idx === 1 ? 'rgba(255, 220, 160, 0.28)' : 'rgba(200, 230, 255, 0.24)',
+            idx === 1
+              ? `rgba(255, 220, 160, ${(0.28 * pinVis).toFixed(3)})`
+              : `rgba(200, 230, 255, ${(0.24 * pinVis).toFixed(3)})`,
           )
           g.addColorStop(1, 'rgba(0, 0, 0, 0)')
           pCtx.fillStyle = g
@@ -347,42 +421,44 @@ export default function ActPrism({ onBiasChange }) {
         })
 
         // 6. Microscopic dust specks illuminated strictly within the light paths
-        for (const m of motes) {
-          m.x = (m.x + m.vx + 1) % 1
-          m.y = (m.y + m.vy + 1) % 1
-          const mx = m.x * w
-          const my = m.y * h
+        if (dispVis > 0.05) {
+          for (const m of motes) {
+            m.x = (m.x + m.vx + 1) % 1
+            m.y = (m.y + m.vy + 1) % 1
+            const mx = m.x * w
+            const my = m.y * h
 
-          let alpha = 0
-          let rgb = '255,255,255'
+            let alpha = 0
+            let rgb = '255,255,255'
 
-          if (mx > exitPt.x) {
-            const ang = Math.atan2(my - exitPt.y, mx - exitPt.x)
-            const half = mainSpread * 0.56
-            if (Math.abs(ang - mainAngle) < half) {
-              const u = (ang - (mainAngle - half)) / (half * 2)
-              const [cr, cg, cb] = spectralRGB(u)
-              rgb = `${cr},${cg},${cb}`
-              alpha = 0.62
-            } else if (Math.abs(ang - reflAngleUp) < reflSpreadUp * 0.6) {
-              const u = 1 - (ang - (reflAngleUp - reflSpreadUp * 0.6)) / (reflSpreadUp * 1.2)
-              const [cr, cg, cb] = spectralRGB(u)
-              rgb = `${cr},${cg},${cb}`
-              alpha = 0.35 * reflStrength
+            if (mx > exitPt.x) {
+              const ang = Math.atan2(my - exitPt.y, mx - exitPt.x)
+              const half = mainSpread * 0.56
+              if (Math.abs(ang - mainAngle) < half) {
+                const u = (ang - (mainAngle - half)) / (half * 2)
+                const [cr, cg, cb] = spectralRGB(u)
+                rgb = `${cr},${cg},${cb}`
+                alpha = 0.62 * dispVis
+              } else if (Math.abs(ang - reflAngleUp) < reflSpreadUp * 0.6) {
+                const u = 1 - (ang - (reflAngleUp - reflSpreadUp * 0.6)) / (reflSpreadUp * 1.2)
+                const [cr, cg, cb] = spectralRGB(u)
+                rgb = `${cr},${cg},${cb}`
+                alpha = 0.35 * reflStrength * dispVis
+              }
+            } else {
+              const beamY = beamStartY + (entryPt.y - beamStartY) * (mx / entryPt.x)
+              if (Math.abs(my - beamY) < 10) {
+                alpha = 0.55 * dispVis
+              }
             }
-          } else {
-            const beamY = beamStartY + (entryPt.y - beamStartY) * (mx / entryPt.x)
-            if (Math.abs(my - beamY) < 10) {
-              alpha = 0.55
-            }
-          }
 
-          if (alpha > 0.01) {
-            const tw = 0.5 + 0.5 * Math.sin(t * 0.0025 + m.tw)
-            pCtx.fillStyle = `rgba(${rgb}, ${(alpha * tw).toFixed(3)})`
-            pCtx.beginPath()
-            pCtx.arc(mx, my, m.r, 0, Math.PI * 2)
-            pCtx.fill()
+            if (alpha > 0.01) {
+              const tw = 0.5 + 0.5 * Math.sin(t * 0.0025 + m.tw)
+              pCtx.fillStyle = `rgba(${rgb}, ${(alpha * tw).toFixed(3)})`
+              pCtx.beginPath()
+              pCtx.arc(mx, my, m.r, 0, Math.PI * 2)
+              pCtx.fill()
+            }
           }
         }
         pCtx.restore()

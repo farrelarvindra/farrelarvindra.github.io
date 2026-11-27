@@ -677,7 +677,7 @@ export default function ActTotality({ onReplayIntro }) {
                     onClick={onReplayIntro}
                     className="hover:text-white transition-colors cursor-pointer"
                   >
-                    REPLAY HYPERSPACE ↺
+                    REPLAY PORTAL ↺
                   </button>
                 </>
               )}
